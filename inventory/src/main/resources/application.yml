@@ -11,11 +11,11 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+    defer-datasource-initialization: true
     show-sql: true
     properties:
       hibernate:
         format_sql: true
-      defer-datasource-initialization: true
     open-in-view: false
 
   sql:
@@ -26,3 +26,7 @@ server:
   port: 8080
   servlet:
     context-path: /api/v1
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:86400000}
