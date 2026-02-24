@@ -1,7 +1,6 @@
 # Warehouse Inventory and Stock Management System
 
 A secure, role-based backend system for managing warehouse products, stock operations, and audit history using a clean layered architecture.
-
 ---
 
 ## Problem Statement
