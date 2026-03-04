@@ -16,6 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -75,6 +76,20 @@ public class StockServiceImpl implements StockService {
 
         return stockMovementRepository
                 .findAllByOrderByCreatedAtDesc()
+                .stream()
+                .map(StockMovementResponse::new)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StockMovementResponse> getHistoryByDate(
+            LocalDateTime startDate,
+            LocalDateTime endDate
+    ) {
+
+        return stockMovementRepository
+                .findByCreatedAtBetweenOrderByCreatedAtDesc(startDate, endDate)
                 .stream()
                 .map(StockMovementResponse::new)
                 .toList();

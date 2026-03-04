@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -24,14 +25,25 @@ public class StockController {
         return ResponseEntity.ok(ApiResponse.success(stockService.updateStock(request)));
     }
 
-    @GetMapping("/history")
-    public ResponseEntity<ApiResponse<List<StockMovementResponse>>> getAllHistory() {
-        return ResponseEntity.ok(ApiResponse.success(stockService.getAllHistory()));
-    }
-
     @GetMapping("/history/{productId}")
     public ResponseEntity<ApiResponse<List<StockMovementResponse>>> getProductHistory(
             @PathVariable Integer productId) {
         return ResponseEntity.ok(ApiResponse.success(stockService.getProductHistory(productId)));
+    }
+
+    @GetMapping("/stock/history")
+    public List<StockMovementResponse> getHistory(
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate
+    ) {
+
+        if (startDate != null && endDate != null) {
+            return stockService.getHistoryByDate(
+                    startDate.atStartOfDay(),
+                    endDate.atTime(23,59,59)
+            );
+        }
+
+        return stockService.getAllHistory();
     }
 }
