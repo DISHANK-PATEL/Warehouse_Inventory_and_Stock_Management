@@ -1,7 +1,7 @@
 INSERT IGNORE INTO users (email, password_hash, full_name, role, is_active, created_at, updated_at)
 VALUES (
     'admin@warehouse.com',
-    '$2a$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi.',
+    '$2a$12$gqfvoeeMPzQr9DZlFfa0jumXvLKSfnHX./5I0z9pmUMdA9AziLuRa',
     'Admin User',
     'ADMIN',
     1,
