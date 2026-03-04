@@ -86,8 +86,6 @@ MySQL Database
 | Endpoint | Admin | Staff |
 |----------|--------|--------|
 | `POST /auth/login` | ✅ | ✅ |
-| `POST /auth/refresh` | ✅ | ✅ |
-| `POST /auth/logout` | ✅ | ✅ |
 | `POST /products` | ✅ | ❌ |
 | `GET /products` | ✅ | ✅ |
 | `GET /products/:id` | ✅ | ✅ |
@@ -240,7 +238,7 @@ This runs only the `StockServiceTest` class.
 ---
 
 ## Sample Screenshots
-
+![img.png](img.png)
 ### 1. Signup as New Staff User
 <img src="https://github.com/user-attachments/assets/9a80c153-4d06-4367-92a7-97f2af5bd5ca" width="700"/>
 
@@ -262,6 +260,8 @@ This runs only the `StockServiceTest` class.
 ### 7. View Product Stock History
 <img src="https://github.com/user-attachments/assets/e70cfe0f-eb15-4543-b594-be72ee4b3eb6" width="900"/>
 
+### 8. Filter stock movement by date
+![img_1.png](img_1.png)
 ---
 
 
