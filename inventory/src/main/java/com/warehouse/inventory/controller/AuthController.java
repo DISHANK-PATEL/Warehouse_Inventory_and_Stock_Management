@@ -5,7 +5,7 @@ import com.warehouse.inventory.dto.request.SignupRequest;
 import com.warehouse.inventory.dto.response.ApiResponse;
 import com.warehouse.inventory.dto.response.AuthResponse;
 import com.warehouse.inventory.dto.response.SignupResponse;
-import com.warehouse.inventory.service.AuthService;
+import com.warehouse.inventory.service.impl.AuthServiceImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class AuthController {
 
-    private final AuthService authService;
+    private final AuthServiceImpl authService;
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(

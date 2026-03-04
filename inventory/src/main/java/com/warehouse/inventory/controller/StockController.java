@@ -3,7 +3,7 @@ package com.warehouse.inventory.controller;
 import com.warehouse.inventory.dto.request.StockUpdateRequest;
 import com.warehouse.inventory.dto.response.ApiResponse;
 import com.warehouse.inventory.dto.response.StockMovementResponse;
-import com.warehouse.inventory.service.StockService;
+import com.warehouse.inventory.service.impl.StockServiceImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,7 +16,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class StockController {
 
-    private final StockService stockService;
+    private final StockServiceImpl stockService;
 
     @PostMapping("/update")
     public ResponseEntity<ApiResponse<StockMovementResponse>> updateStock(

@@ -8,6 +8,7 @@ import com.warehouse.inventory.exception.InsufficientStockException;
 import com.warehouse.inventory.repository.ProductRepository;
 import com.warehouse.inventory.repository.StockMovementRepository;
 import com.warehouse.inventory.security.CustomUserDetails;
+import com.warehouse.inventory.service.impl.StockServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,7 +32,7 @@ class StockServiceTest {
     @Mock private ProductRepository productRepository;
     @Mock private StockMovementRepository stockMovementRepository;
 
-    @InjectMocks private StockService stockService;
+    @InjectMocks private StockServiceImpl stockService;
 
     private Product testProduct;
     private User staffUser;

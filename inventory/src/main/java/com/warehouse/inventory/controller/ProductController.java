@@ -4,7 +4,7 @@ import com.warehouse.inventory.dto.request.CreateProductRequest;
 import com.warehouse.inventory.dto.request.UpdateProductRequest;
 import com.warehouse.inventory.dto.response.ApiResponse;
 import com.warehouse.inventory.dto.response.ProductResponse;
-import com.warehouse.inventory.service.ProductService;
+import com.warehouse.inventory.service.impl.ProductServiceImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -18,7 +18,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProductController {
 
-    private final ProductService productService;
+    private final ProductServiceImpl productService;
 
     @PostMapping
     public ResponseEntity<ApiResponse<ProductResponse>> createProduct(
