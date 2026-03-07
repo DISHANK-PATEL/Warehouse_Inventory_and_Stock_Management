@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Repository
 public interface StockMovementRepository extends JpaRepository<StockMovement, Integer> {
@@ -14,7 +15,7 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, In
     List<StockMovement> findAllByOrderByCreatedAtDesc();
 
     // Get stock history for a specific product
-    List<StockMovement> findByProductIdOrderByCreatedAtDesc(Integer productId);
+    List<StockMovement> findByProductIdOrderByCreatedAtDesc(UUID productId);
 
     // Filter stock history by date range
     List<StockMovement> findByCreatedAtBetweenOrderByCreatedAtDesc(

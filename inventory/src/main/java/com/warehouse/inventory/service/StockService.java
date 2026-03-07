@@ -5,6 +5,7 @@ import com.warehouse.inventory.dto.response.StockMovementResponse;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 public interface StockService {
 
@@ -12,7 +13,7 @@ public interface StockService {
 
     List<StockMovementResponse> getAllHistory();
 
-    List<StockMovementResponse> getProductHistory(Integer productId);
+    List<StockMovementResponse> getProductHistory(UUID productId);
 
     List<StockMovementResponse> getHistoryByDate(
             LocalDateTime startDate,

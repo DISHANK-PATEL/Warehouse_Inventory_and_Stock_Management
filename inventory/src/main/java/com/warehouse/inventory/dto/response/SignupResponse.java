@@ -4,11 +4,12 @@ import com.warehouse.inventory.entity.User;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 public class SignupResponse {
 
-    private final Integer id;
+    private final UUID id;
     private final String fullName;
     private final String email;
     private final String role;

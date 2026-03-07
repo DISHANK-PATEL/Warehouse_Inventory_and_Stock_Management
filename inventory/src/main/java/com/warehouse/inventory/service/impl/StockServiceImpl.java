@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -97,7 +98,7 @@ public class StockServiceImpl implements StockService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<StockMovementResponse> getProductHistory(Integer productId) {
+    public List<StockMovementResponse> getProductHistory(UUID productId) {
 
         if (!productRepository.existsById(productId)) {
             throw new ResourceNotFoundException(

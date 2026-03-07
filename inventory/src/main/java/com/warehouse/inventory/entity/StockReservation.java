@@ -2,7 +2,6 @@ package com.warehouse.inventory.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.checkerframework.checker.units.qual.C;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
@@ -10,13 +9,13 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "stock_movements")
+@Table(name = "stock_reservations")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class StockMovement {
+public class StockReservation {
 
     @Id
     @UuidGenerator
@@ -27,31 +26,26 @@ public class StockMovement {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false)
-    private MovementType movementType;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reserved_by")
+    private User reservedBy;
 
-    @Column(name = "quantity", nullable = false)
+    @Column(nullable = false)
     private int quantity;
 
-    @Column(name = "stock_before", nullable = false)
-    private int stockBefore;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private Status status;
 
-    @Column(name = "stock_after", nullable = false)
-    private int stockAfter;
+    private LocalDateTime expiresAt;
 
-    @Column(name = "notes", columnDefinition = "TEXT")
-    private String notes;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "performed_by", nullable = false)
-    private User performedBy;
+    private LocalDateTime releasedAt;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    public enum MovementType {
-        ADD, REMOVE, RESERVE, RELEASE
+    public enum Status {
+        ACTIVE, RELEASED, EXPIRED
     }
 }

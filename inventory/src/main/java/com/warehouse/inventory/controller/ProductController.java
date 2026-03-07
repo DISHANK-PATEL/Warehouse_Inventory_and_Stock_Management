@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/products")
@@ -35,13 +36,13 @@ public class ProductController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ProductResponse>> getProduct(
-            @PathVariable Integer id) {
+            @PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(productService.getProductById(id)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(
-            @PathVariable Integer id,
+            @PathVariable UUID id,
             @Valid @RequestBody UpdateProductRequest request) {
         return ResponseEntity.ok(ApiResponse.success(productService.updateProduct(id, request)));
     }

@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/stock")
@@ -27,7 +28,7 @@ public class StockController {
 
     @GetMapping("/history/{productId}")
     public ResponseEntity<ApiResponse<List<StockMovementResponse>>> getProductHistory(
-            @PathVariable Integer productId) {
+            @PathVariable UUID productId) {
         return ResponseEntity.ok(ApiResponse.success(stockService.getProductHistory(productId)));
     }
 

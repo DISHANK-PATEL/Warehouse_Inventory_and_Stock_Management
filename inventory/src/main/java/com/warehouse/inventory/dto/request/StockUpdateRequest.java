@@ -7,12 +7,14 @@ import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Getter
 @NoArgsConstructor
 public class StockUpdateRequest {
 
     @NotNull(message = "Product ID is required")
-    private Integer productId;
+    private UUID productId;
 
     @NotBlank(message = "Type is required")
     @Pattern(regexp = "ADD|REMOVE", message = "Type must be ADD or REMOVE")

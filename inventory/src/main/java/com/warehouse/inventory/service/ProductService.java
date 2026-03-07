@@ -5,6 +5,7 @@ import com.warehouse.inventory.dto.request.UpdateProductRequest;
 import com.warehouse.inventory.dto.response.ProductResponse;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface ProductService {
 
@@ -12,7 +13,7 @@ public interface ProductService {
 
     List<ProductResponse> getAllProducts(String search);
 
-    ProductResponse getProductById(Integer id);
+    ProductResponse getProductById(UUID id);
 
-    ProductResponse updateProduct(Integer id, UpdateProductRequest request);
+    ProductResponse updateProduct(UUID id, UpdateProductRequest request);
 }

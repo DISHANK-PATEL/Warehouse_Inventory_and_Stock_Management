@@ -4,12 +4,13 @@ import com.warehouse.inventory.entity.StockMovement;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 public class StockMovementResponse {
 
-    private final Integer id;
-    private final Integer productId;
+    private final UUID id;
+    private final UUID productId;
     private final String productName;
     private final String movementType;
     private final int quantity;

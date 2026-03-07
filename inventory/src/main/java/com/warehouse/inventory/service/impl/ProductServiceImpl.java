@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -65,7 +66,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
-    public ProductResponse getProductById(Integer id) {
+    public ProductResponse getProductById(UUID id) {
 
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -76,7 +77,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
-    public ProductResponse updateProduct(Integer id, UpdateProductRequest request) {
+    public ProductResponse updateProduct(UUID id, UpdateProductRequest request) {
 
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
