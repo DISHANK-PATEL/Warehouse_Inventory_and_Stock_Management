@@ -34,7 +34,8 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/login",
+                        .requestMatchers(
+                                "/api/v1/auth/login",
                                 "/api/v1/health",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
@@ -44,20 +45,30 @@ public class SecurityConfig {
                                 "/docs",
                                 "/docs/**"
                         ).permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/signup").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/products").hasAnyRole("ADMIN", "PRODUCT_MANAGER")
-                        .requestMatchers(HttpMethod.PUT,  "/api/v1/products/**").hasRole("ADMIN")
 
-                        .requestMatchers(HttpMethod.GET,  "/api/v1/products/**")    .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
-                        .requestMatchers(HttpMethod.GET,  "/api/v1/products")       .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/stock/update")   .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
-                        .requestMatchers(HttpMethod.GET,  "/api/v1/stock/history")  .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
-                        .requestMatchers(HttpMethod.GET,  "/api/v1/stock/history/**").hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
+                        // Admin-only mutations
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/signup")        .hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/products")            .hasAnyRole("ADMIN", "PRODUCT_MANAGER")
+                        .requestMatchers(HttpMethod.PUT,  "/api/v1/products/**")         .hasRole("ADMIN")
 
-                        .requestMatchers(HttpMethod.GET, "/api/v1/stock/reservations").hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
+                        // Bulk operations — upload is Admin only; viewing is Admin + Staff + PM
+                        .requestMatchers(HttpMethod.POST, "/api/v1/bulk/upload")         .hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET,  "/api/v1/bulk")                .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
+                        .requestMatchers(HttpMethod.GET,  "/api/v1/bulk/**")             .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
 
-                        .requestMatchers(HttpMethod.GET, "/api/v1/alerts")    .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/alerts/**") .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
+                        // Product reads
+                        .requestMatchers(HttpMethod.GET,  "/api/v1/products")            .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
+                        .requestMatchers(HttpMethod.GET,  "/api/v1/products/**")         .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
+
+                        // Stock operations
+                        .requestMatchers(HttpMethod.POST, "/api/v1/stock/update")        .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
+                        .requestMatchers(HttpMethod.GET,  "/api/v1/stock/history")       .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
+                        .requestMatchers(HttpMethod.GET,  "/api/v1/stock/history/**")    .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
+                        .requestMatchers(HttpMethod.GET,  "/api/v1/stock/reservations")  .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
+
+                        // Alerts
+                        .requestMatchers(HttpMethod.GET,  "/api/v1/alerts")              .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
+                        .requestMatchers(HttpMethod.GET,  "/api/v1/alerts/**")           .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
 
                         .anyRequest().authenticated()
                 )
