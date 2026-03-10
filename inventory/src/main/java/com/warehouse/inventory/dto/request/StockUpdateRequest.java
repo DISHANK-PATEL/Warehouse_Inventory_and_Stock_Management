@@ -17,11 +17,15 @@ public class StockUpdateRequest {
     private UUID productId;
 
     @NotBlank(message = "Type is required")
-    @Pattern(regexp = "ADD|REMOVE", message = "Type must be ADD or REMOVE")
+    @Pattern(regexp = "ADD|REMOVE|RESERVE|RELEASE", message = "Type must be ADD, REMOVE, RESERVE, or RELEASE")
     private String type;
 
     @Min(value = 1, message = "Quantity must be at least 1")
     private int quantity;
 
     private String notes;
+
+    private Integer expiresIn;
+
+    private UUID reservationId;
 }

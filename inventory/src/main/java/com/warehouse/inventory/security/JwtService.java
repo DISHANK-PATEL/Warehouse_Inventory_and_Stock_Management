@@ -22,16 +22,27 @@ public class JwtService {
     @Value("${JWT_EXPIRATION}")
     private long expiration;
 
+    @Value("${JWT_REFRESH_EXPIRATION:604800000}")
+    private long refreshExpiration;
+
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("role", userDetails.getAuthorities()
                 .iterator().next().getAuthority());
 
+        return buildToken(extraClaims, userDetails, expiration);
+    }
+
+    public String generateRefreshToken(UserDetails userDetails) {
+        return buildToken(new HashMap<>(), userDetails, refreshExpiration);
+    }
+
+    private String buildToken(Map<String, Object> extraClaims, UserDetails userDetails, long tokenExpiration) {
         return Jwts.builder()
                 .claims(extraClaims)
                 .subject(userDetails.getUsername())
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + expiration))
+                .expiration(new Date(System.currentTimeMillis() + tokenExpiration))
                 .signWith(getSigningKey())
                 .compact();
     }

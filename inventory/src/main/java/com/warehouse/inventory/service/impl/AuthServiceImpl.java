@@ -38,15 +38,18 @@ public class AuthServiceImpl implements AuthService {
         );
 
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        User user = userDetails.getUser();
 
-        String token = jwtService.generateToken(userDetails);
+        String accessToken = jwtService.generateToken(userDetails);
+
+        String refreshToken = jwtService.generateRefreshToken(userDetails);
 
         return new AuthResponse(
-                token,
+                accessToken,
+                refreshToken,
                 "Bearer",
                 jwtService.getExpiration() / 1000,
-                userDetails.getUsername(),
-                userDetails.getUser().getRole().name()
+                new AuthResponse.UserInfo(user.getId(), user.getEmail(), user.getRole().name())
         );
     }
 
@@ -68,8 +71,6 @@ public class AuthServiceImpl implements AuthService {
                 .isActive(true)
                 .build();
 
-        User saved = userRepository.save(newUser);
-
-        return new SignupResponse(saved);
+        return new SignupResponse(userRepository.save(newUser));
     }
 }

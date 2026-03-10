@@ -54,6 +54,13 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.failure("FORBIDDEN", "You don't have permission for this action"));
     }
 
+    // Fix: was calling ApiResponse.error() which doesn't exist — changed to ApiResponse.failure()
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiResponse<Void>> handleForbidden(ForbiddenException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.failure("FORBIDDEN", ex.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException ex) {
         String message = ex.getBindingResult().getFieldErrors()
@@ -62,6 +69,13 @@ public class GlobalExceptionHandler {
                 .collect(Collectors.joining(", "));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.failure("VALIDATION_FAILED", message));
+    }
+
+    // Fix: uncommented — handles IllegalArgumentException from service layer (e.g. threshold logic)
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.failure("VALIDATION_FAILED", ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)

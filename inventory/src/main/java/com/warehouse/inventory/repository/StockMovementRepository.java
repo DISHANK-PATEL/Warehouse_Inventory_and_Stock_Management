@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface StockMovementRepository extends JpaRepository<StockMovement, Integer> {
+public interface StockMovementRepository extends JpaRepository<StockMovement, UUID> {
 
     // Get complete stock history
     List<StockMovement> findAllByOrderByCreatedAtDesc();
@@ -22,5 +22,4 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, In
             LocalDateTime startDate,
             LocalDateTime endDate
     );
-
 }

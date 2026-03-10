@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/stock")
+@RequestMapping("/api/v1/stock")
 @RequiredArgsConstructor
 public class StockController {
 
@@ -32,19 +32,22 @@ public class StockController {
         return ResponseEntity.ok(ApiResponse.success(stockService.getProductHistory(productId)));
     }
 
-    @GetMapping("/stock/history")
-    public List<StockMovementResponse> getHistory(
+    @GetMapping("/history")
+    public ResponseEntity<ApiResponse<List<StockMovementResponse>>> getHistory(
             @RequestParam(required = false) LocalDate startDate,
-            @RequestParam(required = false) LocalDate endDate
-    ) {
+            @RequestParam(required = false) LocalDate endDate) {
+
+        List<StockMovementResponse> result;
 
         if (startDate != null && endDate != null) {
-            return stockService.getHistoryByDate(
+            result = stockService.getHistoryByDate(
                     startDate.atStartOfDay(),
-                    endDate.atTime(23,59,59)
+                    endDate.atTime(23, 59, 59)
             );
+        } else {
+            result = stockService.getAllHistory();
         }
 
-        return stockService.getAllHistory();
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 }

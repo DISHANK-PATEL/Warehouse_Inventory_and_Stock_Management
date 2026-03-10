@@ -1,6 +1,7 @@
 package com.warehouse.inventory.entity;
 
 import jakarta.persistence.*;
+import jakarta.persistence.criteria.CriteriaBuilder;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -35,22 +36,24 @@ public class Product {
     @Column(name = "stock_quantity", nullable = false)
     private int stockQuantity = 0;
 
-    @Column(name = "reserved_quantity")
-    private int reservedQuantity;
+    @Column(name = "reserved_quantity", nullable = false)
+    @Builder.Default
+    private int reservedQuantity = 0;
 
     @Column(name = "min_threshold")
-    private int minThreshold;
+    private Integer minThreshold;
 
     @Column(name = "max_threshold")
-    private int maxThreshold;
+    private Integer maxThreshold;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "breach_status")
-    private String breachStatus;
+    @Column(name = "breach_status", nullable = false)
+    @Builder.Default
+    private BreachStatus breachStatus = BreachStatus.NONE;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_manager_id")
-    private User productManagerId;
+    private User productManager;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
@@ -63,4 +66,8 @@ public class Product {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    public enum BreachStatus {
+        NONE, BELOW_MIN, ABOVE_MAX
+    }
 }

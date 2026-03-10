@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface ProductRepository extends JpaRepository<Product, Integer> {
+public interface ProductRepository extends JpaRepository<Product, UUID> {
 
     boolean existsByName(String name);
     boolean existsBySku(String sku);
@@ -16,4 +16,6 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
     boolean existsBySkuAndIdNot(String sku, UUID id);
 
     List<Product> findByNameContainingIgnoreCase(String name);
+
+    List<Product> findByProductManagerId(UUID productManagerId);
 }
