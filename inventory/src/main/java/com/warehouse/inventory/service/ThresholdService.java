@@ -1,6 +1,7 @@
 package com.warehouse.inventory.service;
 
 import com.warehouse.inventory.entity.Product;
+import com.warehouse.inventory.entity.StockAlert;
 
 public interface ThresholdService {
 
@@ -14,5 +15,5 @@ public interface ThresholdService {
      * Must be called after every stock quantity change (ADD or REMOVE).
      * The product must already be saved before calling this.
      */
-    void evaluateAndAlert(Product product);
+    StockAlert evaluateAndAlert(Product product);
 }

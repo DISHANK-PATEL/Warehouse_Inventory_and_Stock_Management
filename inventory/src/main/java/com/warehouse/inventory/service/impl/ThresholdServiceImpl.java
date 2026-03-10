@@ -23,7 +23,6 @@ public class ThresholdServiceImpl implements ThresholdService {
 
     private final ProductRepository    productRepository;
     private final StockAlertRepository stockAlertRepository;
-    private final NotificationService  notificationService;
 
     // How many alerts of the same breach type can be raised per product
     // within the lookback window before suppression kicks in.
@@ -40,7 +39,7 @@ public class ThresholdServiceImpl implements ThresholdService {
 
     @Override
     @Transactional
-    public void evaluateAndAlert(Product product) {
+    public StockAlert evaluateAndAlert(Product product) {
         int stock = product.getStockQuantity();
 
         Product.BreachStatus newStatus = computeBreachStatus(product, stock);
@@ -55,7 +54,7 @@ public class ThresholdServiceImpl implements ThresholdService {
 
         // Only create an alert if there is an active breach
         if (newStatus == Product.BreachStatus.NONE) {
-            return;
+            return null;
         }
 
         StockAlert.BreachType breachType = newStatus == Product.BreachStatus.BELOW_MIN
@@ -70,7 +69,7 @@ public class ThresholdServiceImpl implements ThresholdService {
         if (isBreachLimitReached(product, breachType)) {
             logger.info("Breach-limit reached for product '{}' ({}). Suppressing alert.",
                     product.getName(), breachType);
-            return;
+            return null;
         }
 
         // Create the StockAlert
@@ -85,12 +84,7 @@ public class ThresholdServiceImpl implements ThresholdService {
         logger.info("StockAlert created for product '{}': {} (stock={}, threshold={})",
                 product.getName(), breachType, stock, thresholdValue);
 
-        // Send notifications (non-blocking — failures are logged, not rethrown)
-        try {
-            notificationService.sendBreachNotifications(alert);
-        } catch (Exception e) {
-            logger.error("Notification dispatch failed for alert {}: {}", alert.getId(), e.getMessage());
-        }
+        return alert;
     }
 
     // -------------------------------------------------------------------------

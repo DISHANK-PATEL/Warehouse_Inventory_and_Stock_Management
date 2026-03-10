@@ -24,6 +24,24 @@ spring:
       schema-locations: classpath:schema.sql
       data-locations: classpath:data.sql
 
+mail:
+  host: smtp.gmail.com
+  port: 587
+  username: ${MAIL_USERNAME:placeholder@example.com}
+  password: ${MAIL_PASSWORD:placeholder}
+  test-connection: false
+  properties:
+    mail:
+      smtp:
+        auth: true
+        starttls:
+          enable: true
+
+cache:
+  type: caffeine
+  caffeine:
+    spec: maximumSize=500,expireAfterWrite=60s
+
 server:
   port: 8080
   servlet:
@@ -38,3 +56,20 @@ springdoc:
     path: /docs
   api-docs:
     path: /api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+notification:
+  max-retries: 3
+  breach-limit: 2
+
+scheduler:
+  retry-interval-ms: 300000
+  retry-initial-delay-ms: 60000

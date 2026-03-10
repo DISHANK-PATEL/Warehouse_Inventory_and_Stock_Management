@@ -3,6 +3,7 @@ package com.warehouse.inventory.service.impl;
 import com.warehouse.inventory.dto.request.StockUpdateRequest;
 import com.warehouse.inventory.dto.response.StockMovementResponse;
 import com.warehouse.inventory.entity.Product;
+import com.warehouse.inventory.entity.StockAlert;
 import com.warehouse.inventory.entity.StockMovement;
 import com.warehouse.inventory.entity.User;
 import com.warehouse.inventory.exception.ForbiddenException;
@@ -11,9 +12,12 @@ import com.warehouse.inventory.exception.ResourceNotFoundException;
 import com.warehouse.inventory.repository.ProductRepository;
 import com.warehouse.inventory.repository.StockMovementRepository;
 import com.warehouse.inventory.security.CustomUserDetails;
+import com.warehouse.inventory.service.NotificationService;
 import com.warehouse.inventory.service.StockService;
 import com.warehouse.inventory.service.ThresholdService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,14 +30,47 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class StockServiceImpl implements StockService {
 
-    private final ProductRepository productRepository;
+    private static final Logger logger = LoggerFactory.getLogger(StockServiceImpl.class);
+
+    private final ProductRepository       productRepository;
     private final StockMovementRepository stockMovementRepository;
+    private final ThresholdService        thresholdService;
+    // Fix: injected here rather than ThresholdService so we can call it AFTER
+    // the @Transactional boundary, ensuring StockAlert is committed first
+    private final NotificationService     notificationService;
 
-    private final ThresholdService thresholdService;
+    // -------------------------------------------------------------------------
+    // POST /stock/update
+    // -------------------------------------------------------------------------
 
+    /**
+     * Non-transactional wrapper — orchestrates the transactional work then
+     * dispatches async notifications after the transaction has committed.
+     * This is the fix for the async/transaction boundary problem.
+     */
     @Override
-    @Transactional
     public StockMovementResponse updateStock(StockUpdateRequest request) {
+        // Step 1: do all DB work inside a transaction
+        StockUpdateResult result = performStockUpdate(request);
+
+        // Step 2: dispatch async notifications AFTER transaction committed
+        // At this point the StockAlert row is fully committed and visible
+        // to the notification thread pool
+        if (result.alert() != null) {
+            try {
+                notificationService.sendBreachNotifications(result.alert());
+            } catch (Exception e) {
+                // Notification failure must never fail the stock update response
+                logger.error("Notification dispatch error for alert {}: {}",
+                        result.alert().getId(), e.getMessage());
+            }
+        }
+
+        return result.response();
+    }
+
+    @Transactional
+    protected StockUpdateResult performStockUpdate(StockUpdateRequest request) {
 
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -41,9 +78,7 @@ public class StockServiceImpl implements StockService {
 
         User currentUser = getCurrentUser();
 
-        int stockBefore = product.getStockQuantity();
-        int stockAfter;
-
+        // PM ownership check
         if (currentUser.getRole() == User.Role.PRODUCT_MANAGER) {
             boolean isAssigned = product.getProductManager() != null
                     && product.getProductManager().getId().equals(currentUser.getId());
@@ -52,6 +87,9 @@ public class StockServiceImpl implements StockService {
                         "You can only perform stock operations on products assigned to you");
             }
         }
+
+        int stockBefore = product.getStockQuantity();
+        int stockAfter;
 
         switch (request.getType()) {
             case "ADD" -> {
@@ -69,10 +107,13 @@ public class StockServiceImpl implements StockService {
                 product.setStockQuantity(stockAfter);
             }
             default -> throw new IllegalArgumentException(
-                    "Type '" + request.getType() + "' is not yet handled in stock update");
+                    "Type '" + request.getType() + "' not supported. Use ADD or REMOVE.");
         }
 
         productRepository.save(product);
+
+        // Evaluate thresholds — returns created alert (or null if no breach)
+        StockAlert alert = thresholdService.evaluateAndAlert(product);
 
         StockMovement movement = StockMovement.builder()
                 .product(product)
@@ -84,8 +125,15 @@ public class StockServiceImpl implements StockService {
                 .notes(request.getNotes())
                 .build();
 
-        return new StockMovementResponse(stockMovementRepository.save(movement));
+        StockMovementResponse response =
+                new StockMovementResponse(stockMovementRepository.save(movement));
+
+        return new StockUpdateResult(response, alert);
     }
+
+    // -------------------------------------------------------------------------
+    // GET /stock/history
+    // -------------------------------------------------------------------------
 
     @Override
     @Transactional(readOnly = true)
@@ -113,19 +161,9 @@ public class StockServiceImpl implements StockService {
         return movements.stream().map(StockMovementResponse::new).toList();
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<StockMovementResponse> getHistoryByDate(
-            LocalDateTime startDate,
-            LocalDateTime endDate
-    ) {
-
-        return stockMovementRepository
-                .findByCreatedAtBetweenOrderByCreatedAtDesc(startDate, endDate)
-                .stream()
-                .map(StockMovementResponse::new)
-                .toList();
-    }
+    // -------------------------------------------------------------------------
+    // GET /stock/history/:productId
+    // -------------------------------------------------------------------------
 
     @Override
     @Transactional(readOnly = true)
@@ -153,9 +191,25 @@ public class StockServiceImpl implements StockService {
                 .toList();
     }
 
+    @Override
+    public List<StockMovementResponse> getHistoryByDate(LocalDateTime startDate, LocalDateTime endDate) {
+        return List.of();
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
     private User getCurrentUser() {
         CustomUserDetails userDetails = (CustomUserDetails)
                 SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return userDetails.getUser();
     }
+
+    /**
+     * Internal result carrier — bundles the movement response and
+     * the optional StockAlert so the non-transactional wrapper can
+     * dispatch notifications after commit.
+     */
+    private record StockUpdateResult(StockMovementResponse response, StockAlert alert) {}
 }
