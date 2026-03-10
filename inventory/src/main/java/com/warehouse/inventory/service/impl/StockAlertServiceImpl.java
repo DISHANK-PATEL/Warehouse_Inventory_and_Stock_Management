@@ -1,5 +1,6 @@
 package com.warehouse.inventory.service.impl;
 
+import com.warehouse.inventory.dto.response.PagedResponse;
 import com.warehouse.inventory.dto.response.StockAlertResponse;
 import com.warehouse.inventory.entity.StockAlert;
 import com.warehouse.inventory.entity.User;
@@ -8,12 +9,17 @@ import com.warehouse.inventory.exception.ResourceNotFoundException;
 import com.warehouse.inventory.repository.StockAlertRepository;
 import com.warehouse.inventory.security.CustomUserDetails;
 import com.warehouse.inventory.service.StockAlertService;
+import com.warehouse.inventory.specification.StockAlertSpecification;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -28,24 +34,33 @@ public class StockAlertServiceImpl implements StockAlertService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<StockAlertResponse> getAllAlerts() {
+    public PagedResponse<StockAlertResponse> getAllAlerts(
+            UUID productId,
+            StockAlert.BreachType breachType,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            int page,
+            int size
+    ) {
         User currentUser = getCurrentUser();
 
-        if (currentUser.getRole() == User.Role.PRODUCT_MANAGER) {
-            // PM sees only alerts for their assigned products
-            return stockAlertRepository.findAll()
-                    .stream()
-                    .filter(alert -> alert.getProduct().getProductManager() != null
-                            && alert.getProduct().getProductManager().getId()
-                            .equals(currentUser.getId()))
-                    .map(StockAlertResponse::new)
-                    .toList();
-        }
+        // PM scope — automatically restrict to their own products
+        UUID scopedManagerId = (currentUser.getRole() == User.Role.PRODUCT_MANAGER)
+                ? currentUser.getId()
+                : null;
 
-        return stockAlertRepository.findAll()
-                .stream()
-                .map(StockAlertResponse::new)
-                .toList();
+        Specification<StockAlert> spec = StockAlertSpecification.withFilters(
+                productId, breachType, startDate, endDate, scopedManagerId
+        );
+
+        int clampedSize = Math.min(size, 100);
+        Pageable pageable = PageRequest.of(page, clampedSize,
+                Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        return new PagedResponse<>(
+                stockAlertRepository.findAll(spec, pageable)
+                        .map(StockAlertResponse::new)
+        );
     }
 
     // -------------------------------------------------------------------------

@@ -5,14 +5,13 @@ import com.warehouse.inventory.dto.request.UpdateProductRequest;
 import com.warehouse.inventory.dto.response.ApiResponse;
 import com.warehouse.inventory.dto.response.PagedResponse;
 import com.warehouse.inventory.dto.response.ProductResponse;
-import com.warehouse.inventory.service.impl.ProductServiceImpl;
+import com.warehouse.inventory.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -20,7 +19,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ProductController {
 
-    private final ProductServiceImpl productService;
+    private final ProductService productService;
 
     @PostMapping
     public ResponseEntity<ApiResponse<ProductResponse>> createProduct(

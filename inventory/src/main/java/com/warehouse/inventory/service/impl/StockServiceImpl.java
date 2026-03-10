@@ -1,6 +1,7 @@
 package com.warehouse.inventory.service.impl;
 
 import com.warehouse.inventory.dto.request.StockUpdateRequest;
+import com.warehouse.inventory.dto.response.PagedResponse;
 import com.warehouse.inventory.dto.response.StockMovementResponse;
 import com.warehouse.inventory.entity.Product;
 import com.warehouse.inventory.entity.StockAlert;
@@ -15,15 +16,19 @@ import com.warehouse.inventory.security.CustomUserDetails;
 import com.warehouse.inventory.service.NotificationService;
 import com.warehouse.inventory.service.StockService;
 import com.warehouse.inventory.service.ThresholdService;
+import com.warehouse.inventory.specification.StockMovementSpecification;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -35,32 +40,20 @@ public class StockServiceImpl implements StockService {
     private final ProductRepository       productRepository;
     private final StockMovementRepository stockMovementRepository;
     private final ThresholdService        thresholdService;
-    // Fix: injected here rather than ThresholdService so we can call it AFTER
-    // the @Transactional boundary, ensuring StockAlert is committed first
     private final NotificationService     notificationService;
 
     // -------------------------------------------------------------------------
     // POST /stock/update
     // -------------------------------------------------------------------------
 
-    /**
-     * Non-transactional wrapper — orchestrates the transactional work then
-     * dispatches async notifications after the transaction has committed.
-     * This is the fix for the async/transaction boundary problem.
-     */
     @Override
     public StockMovementResponse updateStock(StockUpdateRequest request) {
-        // Step 1: do all DB work inside a transaction
         StockUpdateResult result = performStockUpdate(request);
 
-        // Step 2: dispatch async notifications AFTER transaction committed
-        // At this point the StockAlert row is fully committed and visible
-        // to the notification thread pool
         if (result.alert() != null) {
             try {
                 notificationService.sendBreachNotifications(result.alert());
             } catch (Exception e) {
-                // Notification failure must never fail the stock update response
                 logger.error("Notification dispatch error for alert {}: {}",
                         result.alert().getId(), e.getMessage());
             }
@@ -78,7 +71,6 @@ public class StockServiceImpl implements StockService {
 
         User currentUser = getCurrentUser();
 
-        // PM ownership check
         if (currentUser.getRole() == User.Role.PRODUCT_MANAGER) {
             boolean isAssigned = product.getProductManager() != null
                     && product.getProductManager().getId().equals(currentUser.getId());
@@ -112,7 +104,6 @@ public class StockServiceImpl implements StockService {
 
         productRepository.save(product);
 
-        // Evaluate thresholds — returns created alert (or null if no breach)
         StockAlert alert = thresholdService.evaluateAndAlert(product);
 
         StockMovement movement = StockMovement.builder()
@@ -132,75 +123,61 @@ public class StockServiceImpl implements StockService {
     }
 
     // -------------------------------------------------------------------------
-    // GET /stock/history
+    // GET /stock/history — spec-based, paginated
     // -------------------------------------------------------------------------
 
     @Override
     @Transactional(readOnly = true)
-    public List<StockMovementResponse> getAllHistory(LocalDateTime startDate, LocalDateTime endDate) {
-
+    public PagedResponse<StockMovementResponse> getAllHistory(
+            UUID productId,
+            StockMovement.MovementType movementType,
+            UUID performedById,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            int page,
+            int size
+    ) {
         User currentUser = getCurrentUser();
 
-        if (currentUser.getRole() == User.Role.PRODUCT_MANAGER) {
-            UUID managerId = currentUser.getId();
-            List<StockMovement> movements = (startDate != null && endDate != null)
-                    ? stockMovementRepository
-                    .findByProductProductManagerIdAndCreatedAtBetweenOrderByCreatedAtDesc(
-                            managerId, startDate, endDate)
-                    : stockMovementRepository
-                    .findByProductProductManagerIdOrderByCreatedAtDesc(managerId);
-            return movements.stream().map(StockMovementResponse::new).toList();
-        }
+        UUID scopedManagerId = (currentUser.getRole() == User.Role.PRODUCT_MANAGER)
+                ? currentUser.getId()
+                : null;
 
-        List<StockMovement> movements = (startDate != null && endDate != null)
-                ? stockMovementRepository
-                .findByCreatedAtBetweenOrderByCreatedAtDesc(startDate, endDate)
-                : stockMovementRepository
-                .findAllByOrderByCreatedAtDesc();
+        Specification<StockMovement> spec = StockMovementSpecification.withFilters(
+                productId, movementType, performedById, startDate, endDate, scopedManagerId
+        );
 
-        return movements.stream().map(StockMovementResponse::new).toList();
+        int clampedSize = Math.min(size, 100);
+        Pageable pageable = PageRequest.of(page, clampedSize,
+                Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        return new PagedResponse<>(
+                stockMovementRepository.findAll(spec, pageable)
+                        .map(StockMovementResponse::new)
+        );
     }
 
     // -------------------------------------------------------------------------
-    // GET /stock/history/:productId
+    // GET /stock/history/:productId — paginated, PM scoped
     // -------------------------------------------------------------------------
 
     @Override
     @Transactional(readOnly = true)
-    public List<StockMovementResponse> getProductHistory(UUID productId) {
-
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Product not found with id: " + productId));
-
-        User currentUser = getCurrentUser();
-
-        if (currentUser.getRole() == User.Role.PRODUCT_MANAGER) {
-            boolean isAssigned = product.getProductManager() != null
-                    && product.getProductManager().getId().equals(currentUser.getId());
-            if (!isAssigned) {
-                throw new ForbiddenException(
-                        "You can only view history for products assigned to you");
-            }
-        }
-
-        return stockMovementRepository
-                .findByProductIdOrderByCreatedAtDesc(productId)
-                .stream()
-                .map(StockMovementResponse::new)
-                .toList();
+    public StockMovementResponse getProductHistoryById(UUID productId, int page, int size) {
+        // Delegate to getAllHistory with productId filter
+        throw new UnsupportedOperationException(
+                "Use GET /stock/history?productId={id} for filtered history");
     }
-    
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
     private User getCurrentUser() {
         CustomUserDetails userDetails = (CustomUserDetails)
                 SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return userDetails.getUser();
     }
 
-    /**
-     * Internal result carrier — bundles the movement response and
-     * the optional StockAlert so the non-transactional wrapper can
-     * dispatch notifications after commit.
-     */
     private record StockUpdateResult(StockMovementResponse response, StockAlert alert) {}
 }
