@@ -14,9 +14,4 @@ public interface StockService {
     List<StockMovementResponse> getAllHistory(LocalDateTime startDate, LocalDateTime endDate);
 
     List<StockMovementResponse> getProductHistory(UUID productId);
-
-    List<StockMovementResponse> getHistoryByDate(
-            LocalDateTime startDate,
-            LocalDateTime endDate
-    );
 }

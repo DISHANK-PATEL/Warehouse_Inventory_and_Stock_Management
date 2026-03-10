@@ -33,8 +33,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     private static final Logger logger = LoggerFactory.getLogger(NotificationServiceImpl.class);
 
-    @Autowired(required = false)
-    private JavaMailSender mailSender;
+    private final JavaMailSender mailSender;
 
     private final NotificationLogRepository notificationLogRepository;
     private final UserRepository            userRepository;

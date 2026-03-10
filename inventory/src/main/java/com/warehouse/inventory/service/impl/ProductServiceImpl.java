@@ -24,6 +24,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -91,7 +92,7 @@ public class ProductServiceImpl implements ProductService {
                 .createdBy(currentUser)
                 .build();
 
-        return new ProductResponse(productRepository.save(product));
+        return new ProductResponse(productRepository.saveAndFlush(product));
     }
 
     @Override

@@ -16,6 +16,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        type:
+          preferred_uuid_jdbc_type: VARCHAR
     open-in-view: false
 
   sql:
@@ -24,31 +26,29 @@ spring:
       schema-locations: classpath:schema.sql
       data-locations: classpath:data.sql
 
-mail:
-  host: smtp.gmail.com
-  port: 587
-  username: ${MAIL_USERNAME:placeholder@example.com}
-  password: ${MAIL_PASSWORD:placeholder}
-  test-connection: false
-  properties:
-    mail:
-      smtp:
-        auth: true
-        starttls:
-          enable: true
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:placeholder@example.com}
+    password: ${MAIL_PASSWORD:placeholder}
+    test-connection: false
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
-cache:
-  type: caffeine
-  caffeine:
-    spec: maximumSize=500,expireAfterWrite=60s
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=60s
 
 server:
   port: 8080
-  servlet:
-    context-path: /api/v1
 
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
   expiration: ${JWT_EXPIRATION:86400000}
 
 springdoc:

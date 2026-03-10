@@ -190,16 +190,7 @@ public class StockServiceImpl implements StockService {
                 .map(StockMovementResponse::new)
                 .toList();
     }
-
-    @Override
-    public List<StockMovementResponse> getHistoryByDate(LocalDateTime startDate, LocalDateTime endDate) {
-        return List.of();
-    }
-
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
-
+    
     private User getCurrentUser() {
         CustomUserDetails userDetails = (CustomUserDetails)
                 SecurityContextHolder.getContext().getAuthentication().getPrincipal();
