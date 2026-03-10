@@ -37,17 +37,10 @@ public class StockController {
             @RequestParam(required = false) LocalDate startDate,
             @RequestParam(required = false) LocalDate endDate) {
 
-        List<StockMovementResponse> result;
+        // Convert LocalDate params to LocalDateTime for service layer
+        var start = startDate != null ? startDate.atStartOfDay()       : null;
+        var end   = endDate   != null ? endDate.atTime(23, 59, 59) : null;
 
-        if (startDate != null && endDate != null) {
-            result = stockService.getHistoryByDate(
-                    startDate.atStartOfDay(),
-                    endDate.atTime(23, 59, 59)
-            );
-        } else {
-            result = stockService.getAllHistory();
-        }
-
-        return ResponseEntity.ok(ApiResponse.success(result));
+        return ResponseEntity.ok(ApiResponse.success(stockService.getAllHistory(start, end)));
     }
 }

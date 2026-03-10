@@ -22,4 +22,18 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, UU
             LocalDateTime startDate,
             LocalDateTime endDate
     );
+
+    List<StockMovement> findByProductIdAndCreatedAtBetweenOrderByCreatedAtDesc(
+            UUID productId,
+            LocalDateTime startDate,
+            LocalDateTime endDate
+    );
+
+    List<StockMovement> findByProductProductManagerIdOrderByCreatedAtDesc(UUID managerId);
+
+    List<StockMovement> findByProductProductManagerIdAndCreatedAtBetweenOrderByCreatedAtDesc(
+            UUID managerId,
+            LocalDateTime startDate,
+            LocalDateTime endDate
+    );
 }

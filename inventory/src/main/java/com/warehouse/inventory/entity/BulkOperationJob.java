@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "bulkOperationJob")
+@Table(name = "bulk_operation_jobs")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -38,6 +38,9 @@ public class BulkOperationJob {
 
     @Column(name = "failed_rows")
     private int failedRows;
+
+    @Column(name = "row_results", columnDefinition = "TEXT")
+    private String rowResults;
 
     @CreationTimestamp
     @Column(name = "submitted_at", updatable = false)

@@ -9,7 +9,14 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "stock_movements")
+@Table(
+        name = "stock_movements",
+        indexes = {
+                @Index(name = "idx_stock_movements_product_id", columnList = "product_id"),
+                @Index(name = "idx_stock_movements_created_at",   columnList = "created_at"),
+                @Index(name = "idx_stock_movements_performed_by", columnList = "performed_by")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -27,7 +34,7 @@ public class StockMovement {
     private Product product;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false)
+    @Column(name = "movement_type", nullable = false, length = 10)
     private MovementType movementType;
 
     @Column(name = "quantity", nullable = false)

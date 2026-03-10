@@ -9,7 +9,13 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "notificationLog")
+@Table(
+        name = "notification_logs",
+        indexes = {
+                @Index(name = "idx_notification_logs_status_retry", columnList = "status, retry_count"),
+                @Index(name = "idx_notification_logs_alert_id",     columnList = "alert_id")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -31,10 +37,11 @@ public class NotificationLog {
     private User receiver;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 10)
+    @Column(name = "status", nullable = false, length = 15)
     private Status status;
 
     @Column(name = "retry_count")
+    @Builder.Default
     private int retryCount = 0;
 
     @Column(name = "failure_reason")

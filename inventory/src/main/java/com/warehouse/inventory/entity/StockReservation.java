@@ -9,7 +9,13 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "stock_reservations")
+@Table(
+        name = "stock_reservations",
+        indexes = {
+                @Index(name = "idx_stock_reservations_status_expires_at", columnList = "status, expires_at"),
+                @Index(name = "idx_stock_reservations_product_id",        columnList = "product_id")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -30,7 +36,7 @@ public class StockReservation {
     @JoinColumn(name = "reserved_by", nullable = false)
     private User reservedBy;
 
-    @Column(nullable = false)
+    @Column(name = "quantity", nullable = false)
     private int quantity;
 
     @Enumerated(EnumType.STRING)

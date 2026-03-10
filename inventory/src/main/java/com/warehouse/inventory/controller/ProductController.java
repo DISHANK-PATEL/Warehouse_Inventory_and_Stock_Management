@@ -3,6 +3,7 @@ package com.warehouse.inventory.controller;
 import com.warehouse.inventory.dto.request.CreateProductRequest;
 import com.warehouse.inventory.dto.request.UpdateProductRequest;
 import com.warehouse.inventory.dto.response.ApiResponse;
+import com.warehouse.inventory.dto.response.PagedResponse;
 import com.warehouse.inventory.dto.response.ProductResponse;
 import com.warehouse.inventory.service.impl.ProductServiceImpl;
 import jakarta.validation.Valid;
@@ -29,9 +30,28 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<ProductResponse>>> getAllProducts(
-            @RequestParam(required = false) String search) {
-        return ResponseEntity.ok(ApiResponse.success(productService.getAllProducts(search)));
+    public ResponseEntity<ApiResponse<PagedResponse<ProductResponse>>> getAllProducts(
+
+            // Filtering params
+            @RequestParam(required = false)               String  search,
+            @RequestParam(required = false)               UUID    managerId,
+            @RequestParam(required = false)               Boolean assigned,
+            @RequestParam(required = false)               String  breachType,
+
+            // Pagination params — with spec defaults
+            @RequestParam(defaultValue = "0")             int     page,
+            @RequestParam(defaultValue = "20")            int     size,
+
+            // Sorting params
+            @RequestParam(defaultValue = "createdAt")     String  sortBy,
+            @RequestParam(defaultValue = "desc")          String  sortDir
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                productService.getAllProducts(
+                        search, managerId, assigned, breachType,
+                        page, size, sortBy, sortDir
+                )
+        ));
     }
 
     @GetMapping("/{id}")

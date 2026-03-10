@@ -1,7 +1,6 @@
 package com.warehouse.inventory.entity;
 
 import jakarta.persistence.*;
-import jakarta.persistence.criteria.CriteriaBuilder;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -11,7 +10,13 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "products")
+@Table(
+        name = "products",
+        indexes = {
+                @Index(name = "idx_products_product_manager_id", columnList = "product_manager_id"),
+                @Index(name = "idx_products_breach_status",      columnList = "breach_status")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -34,6 +39,7 @@ public class Product {
     private String sku;
 
     @Column(name = "stock_quantity", nullable = false)
+    @Builder.Default
     private int stockQuantity = 0;
 
     @Column(name = "reserved_quantity", nullable = false)
@@ -47,7 +53,7 @@ public class Product {
     private Integer maxThreshold;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "breach_status", nullable = false)
+    @Column(name = "breach_status", nullable = false, length = 15)
     @Builder.Default
     private BreachStatus breachStatus = BreachStatus.NONE;
 

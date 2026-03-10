@@ -11,7 +11,7 @@ public interface StockService {
 
     StockMovementResponse updateStock(StockUpdateRequest request);
 
-    List<StockMovementResponse> getAllHistory();
+    List<StockMovementResponse> getAllHistory(LocalDateTime startDate, LocalDateTime endDate);
 
     List<StockMovementResponse> getProductHistory(UUID productId);
 

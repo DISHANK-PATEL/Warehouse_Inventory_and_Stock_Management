@@ -2,6 +2,7 @@ package com.warehouse.inventory.service.impl;
 
 import com.warehouse.inventory.dto.request.CreateProductRequest;
 import com.warehouse.inventory.dto.request.UpdateProductRequest;
+import com.warehouse.inventory.dto.response.PagedResponse;
 import com.warehouse.inventory.dto.response.ProductResponse;
 import com.warehouse.inventory.entity.Product;
 import com.warehouse.inventory.entity.User;
@@ -12,7 +13,13 @@ import com.warehouse.inventory.repository.ProductRepository;
 import com.warehouse.inventory.repository.UserRepository;
 import com.warehouse.inventory.security.CustomUserDetails;
 import com.warehouse.inventory.service.ProductService;
+import com.warehouse.inventory.specification.ProductSpecification;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -89,24 +96,38 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ProductResponse> getAllProducts(String search) {
+    public PagedResponse<ProductResponse> getAllProducts(
+            String search,
+            UUID managerId,
+            Boolean assigned,
+            String breachType,
+            int page,
+            int size,
+            String sortBy,
+            String sortDir
+    ) {
 
         User currentUser = getCurrentUser();
 
-        if (currentUser.getRole() == User.Role.PRODUCT_MANAGER) {
-            return productRepository.findByProductManagerId(currentUser.getId())
-                    .stream()
-                    .map(ProductResponse::new)
-                    .toList();
-        }
+        UUID scopedManagerId = (currentUser.getRole() == User.Role.PRODUCT_MANAGER)
+                ? currentUser.getId()
+                : null;
 
-        List<Product> products = (search != null && !search.isBlank())
-                ? productRepository.findByNameContainingIgnoreCase(search)
-                : productRepository.findAll();
+        Product.BreachStatus breachStatus = parseBreachStatus(breachType);
 
-        return products.stream()
-                .map(ProductResponse::new)
-                .toList();
+        Specification<Product> spec = ProductSpecification.withFilters(
+                search, managerId, assigned, breachStatus, scopedManagerId
+        );
+
+        int clampedSize = Math.min(size, 100);
+        Sort sort = buildSort(sortBy, sortDir);
+        Pageable pageable = PageRequest.of(page, clampedSize, sort);
+
+        Page<ProductResponse> resultPage = productRepository
+                .findAll(spec, pageable)
+                .map(ProductResponse::new);
+
+        return new PagedResponse<>(resultPage);
     }
 
     @Override
@@ -182,5 +203,27 @@ public class ProductServiceImpl implements ProductService {
         CustomUserDetails userDetails = (CustomUserDetails)
                 SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return userDetails.getUser();
+    }
+
+    private Product.BreachStatus parseBreachStatus(String breachType) {
+        if (breachType == null || breachType.isBlank()) return null;
+        try {
+            return Product.BreachStatus.valueOf(breachType.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                    "Invalid breachType '" + breachType + "'. Must be NONE, BELOW_MIN, or ABOVE_MAX");
+        }
+    }
+
+    private Sort buildSort(String sortBy, String sortDir) {
+        String field = switch (sortBy != null ? sortBy.toLowerCase() : "") {
+            case "name"          -> "name";
+            case "stockquantity" -> "stockQuantity";
+            default              -> "createdAt";
+        };
+        Sort.Direction direction = "asc".equalsIgnoreCase(sortDir)
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+        return Sort.by(direction, field);
     }
 }
