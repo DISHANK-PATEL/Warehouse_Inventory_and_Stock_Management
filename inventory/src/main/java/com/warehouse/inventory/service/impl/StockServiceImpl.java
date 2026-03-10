@@ -1,34 +1,38 @@
 package com.warehouse.inventory.service.impl;
 
 import com.warehouse.inventory.dto.request.StockUpdateRequest;
-import com.warehouse.inventory.dto.response.PagedResponse;
 import com.warehouse.inventory.dto.response.StockMovementResponse;
 import com.warehouse.inventory.entity.Product;
 import com.warehouse.inventory.entity.StockAlert;
 import com.warehouse.inventory.entity.StockMovement;
+import com.warehouse.inventory.entity.StockReservation;
 import com.warehouse.inventory.entity.User;
 import com.warehouse.inventory.exception.ForbiddenException;
 import com.warehouse.inventory.exception.InsufficientStockException;
 import com.warehouse.inventory.exception.ResourceNotFoundException;
 import com.warehouse.inventory.repository.ProductRepository;
 import com.warehouse.inventory.repository.StockMovementRepository;
+import com.warehouse.inventory.repository.StockReservationRepository;
 import com.warehouse.inventory.security.CustomUserDetails;
 import com.warehouse.inventory.service.NotificationService;
 import com.warehouse.inventory.service.StockService;
 import com.warehouse.inventory.service.ThresholdService;
-import com.warehouse.inventory.specification.StockMovementSpecification;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.warehouse.inventory.dto.response.PagedResponse;
+import com.warehouse.inventory.specification.StockMovementSpecification;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -37,19 +41,24 @@ public class StockServiceImpl implements StockService {
 
     private static final Logger logger = LoggerFactory.getLogger(StockServiceImpl.class);
 
-    private final ProductRepository       productRepository;
-    private final StockMovementRepository stockMovementRepository;
-    private final ThresholdService        thresholdService;
-    private final NotificationService     notificationService;
+    // Default reservation window: 60 minutes
+    private static final int DEFAULT_EXPIRES_IN_MINUTES = 60;
+
+    private final ProductRepository          productRepository;
+    private final StockMovementRepository    stockMovementRepository;
+    private final StockReservationRepository reservationRepository;
+    private final ThresholdService           thresholdService;
+    private final NotificationService        notificationService;
 
     // -------------------------------------------------------------------------
-    // POST /stock/update
+    // POST /stock/update  (non-transactional wrapper)
     // -------------------------------------------------------------------------
 
     @Override
     public StockMovementResponse updateStock(StockUpdateRequest request) {
         StockUpdateResult result = performStockUpdate(request);
 
+        // Dispatch async notifications AFTER transaction committed
         if (result.alert() != null) {
             try {
                 notificationService.sendBreachNotifications(result.alert());
@@ -71,6 +80,7 @@ public class StockServiceImpl implements StockService {
 
         User currentUser = getCurrentUser();
 
+        // PM ownership check applies to all operation types
         if (currentUser.getRole() == User.Role.PRODUCT_MANAGER) {
             boolean isAssigned = product.getProductManager() != null
                     && product.getProductManager().getId().equals(currentUser.getId());
@@ -82,12 +92,19 @@ public class StockServiceImpl implements StockService {
 
         int stockBefore = product.getStockQuantity();
         int stockAfter;
+        StockAlert alert = null;
 
         switch (request.getType()) {
+
+            // ------------------------------------------------------------------
             case "ADD" -> {
                 stockAfter = stockBefore + request.getQuantity();
                 product.setStockQuantity(stockAfter);
+                productRepository.save(product);
+                alert = thresholdService.evaluateAndAlert(product);
             }
+
+            // ------------------------------------------------------------------
             case "REMOVE" -> {
                 int available = stockBefore - product.getReservedQuantity();
                 if (available < request.getQuantity()) {
@@ -97,14 +114,95 @@ public class StockServiceImpl implements StockService {
                 }
                 stockAfter = stockBefore - request.getQuantity();
                 product.setStockQuantity(stockAfter);
+                productRepository.save(product);
+                alert = thresholdService.evaluateAndAlert(product);
             }
+
+            // ------------------------------------------------------------------
+            case "RESERVE" -> {
+                int available = stockBefore - product.getReservedQuantity();
+                if (available < request.getQuantity()) {
+                    throw new InsufficientStockException(
+                            "Not enough available stock to reserve. Available: " + available
+                                    + ", Requested: " + request.getQuantity());
+                }
+
+                // Increment reservedQuantity — stockQuantity stays the same
+                product.setReservedQuantity(product.getReservedQuantity() + request.getQuantity());
+                stockAfter = stockBefore; // physical stock unchanged
+                productRepository.save(product);
+
+                // Create the reservation record
+                int expiresInMinutes = (request.getExpiresIn() != null && request.getExpiresIn() > 0)
+                        ? request.getExpiresIn()
+                        : DEFAULT_EXPIRES_IN_MINUTES;
+
+                StockReservation reservation = StockReservation.builder()
+                        .product(product)
+                        .reservedBy(currentUser)
+                        .quantity(request.getQuantity())
+                        .status(StockReservation.Status.ACTIVE)
+                        .expiresAt(LocalDateTime.now().plusMinutes(expiresInMinutes))
+                        .build();
+
+                reservationRepository.save(reservation);
+
+                logger.info("Reserved {} units of '{}' for {} — expires in {} min",
+                        request.getQuantity(), product.getName(),
+                        currentUser.getEmail(), expiresInMinutes);
+            }
+
+            // ------------------------------------------------------------------
+            case "RELEASE" -> {
+                if (request.getReservationId() == null) {
+                    throw new IllegalArgumentException(
+                            "reservationId is required for RELEASE operations");
+                }
+
+                StockReservation reservation = reservationRepository
+                        .findById(request.getReservationId())
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Reservation not found with id: " + request.getReservationId()));
+
+                if (reservation.getStatus() != StockReservation.Status.ACTIVE) {
+                    throw new IllegalStateException(
+                            "Reservation " + reservation.getId()
+                                    + " is not ACTIVE (status: " + reservation.getStatus() + ")");
+                }
+
+                // PM can only release reservations on their own products
+                if (currentUser.getRole() == User.Role.PRODUCT_MANAGER) {
+                    boolean isAssigned = reservation.getProduct().getProductManager() != null
+                            && reservation.getProduct().getProductManager().getId()
+                            .equals(currentUser.getId());
+                    if (!isAssigned) {
+                        throw new ForbiddenException(
+                                "You can only release reservations on products assigned to you");
+                    }
+                }
+
+                // Restore the reserved quantity
+                int restored = product.getReservedQuantity() - reservation.getQuantity();
+                product.setReservedQuantity(Math.max(0, restored));
+                stockAfter = stockBefore; // physical stock unchanged
+                productRepository.save(product);
+
+                // Mark reservation as released
+                reservation.setStatus(StockReservation.Status.RELEASED);
+                reservation.setReleasedAt(LocalDateTime.now());
+                reservationRepository.save(reservation);
+
+                logger.info("Released reservation {} — {} units of '{}' restored",
+                        reservation.getId(), reservation.getQuantity(), product.getName());
+            }
+
             default -> throw new IllegalArgumentException(
-                    "Type '" + request.getType() + "' not supported. Use ADD or REMOVE.");
+                    "Type '" + request.getType() + "' not supported. Use ADD, REMOVE, RESERVE, or RELEASE.");
         }
 
-        productRepository.save(product);
-
-        StockAlert alert = thresholdService.evaluateAndAlert(product);
+        // stockAfter is set by all branches
+        // For RESERVE/RELEASE, stockAfter == stockBefore (physical stock unchanged)
+        final int finalStockAfter = stockAfter;
 
         StockMovement movement = StockMovement.builder()
                 .product(product)
@@ -112,7 +210,7 @@ public class StockServiceImpl implements StockService {
                 .movementType(StockMovement.MovementType.valueOf(request.getType()))
                 .quantity(request.getQuantity())
                 .stockBefore(stockBefore)
-                .stockAfter(stockAfter)
+                .stockAfter(finalStockAfter)
                 .notes(request.getNotes())
                 .build();
 
@@ -123,7 +221,7 @@ public class StockServiceImpl implements StockService {
     }
 
     // -------------------------------------------------------------------------
-    // GET /stock/history — spec-based, paginated
+    // GET /stock/history
     // -------------------------------------------------------------------------
 
     @Override
@@ -147,26 +245,25 @@ public class StockServiceImpl implements StockService {
                 productId, movementType, performedById, startDate, endDate, scopedManagerId
         );
 
-        int clampedSize = Math.min(size, 100);
-        Pageable pageable = PageRequest.of(page, clampedSize,
+        Pageable pageable = PageRequest.of(page, Math.min(size, 100),
                 Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        return new PagedResponse<>(
-                stockMovementRepository.findAll(spec, pageable)
-                        .map(StockMovementResponse::new)
-        );
+        Page<StockMovementResponse> resultPage = stockMovementRepository
+                .findAll(spec, pageable)
+                .map(StockMovementResponse::new);
+
+        return new PagedResponse<>(resultPage);
     }
 
     // -------------------------------------------------------------------------
-    // GET /stock/history/:productId — paginated, PM scoped
+    // GET /stock/history/:productId
     // -------------------------------------------------------------------------
 
     @Override
     @Transactional(readOnly = true)
     public StockMovementResponse getProductHistoryById(UUID productId, int page, int size) {
-        // Delegate to getAllHistory with productId filter
         throw new UnsupportedOperationException(
-                "Use GET /stock/history?productId={id} for filtered history");
+                "Use getAllHistory with productId filter for paginated product history");
     }
 
     // -------------------------------------------------------------------------

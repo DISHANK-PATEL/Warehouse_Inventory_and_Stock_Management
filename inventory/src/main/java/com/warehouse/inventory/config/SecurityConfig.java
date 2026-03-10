@@ -54,6 +54,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,  "/api/v1/stock/history")  .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
                         .requestMatchers(HttpMethod.GET,  "/api/v1/stock/history/**").hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
 
+                        .requestMatchers(HttpMethod.GET, "/api/v1/stock/reservations").hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
+
                         .requestMatchers(HttpMethod.GET, "/api/v1/alerts")    .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
                         .requestMatchers(HttpMethod.GET, "/api/v1/alerts/**") .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
 
