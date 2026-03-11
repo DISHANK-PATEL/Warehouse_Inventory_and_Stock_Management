@@ -56,6 +56,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,  "/api/v1/bulk")                .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
                         .requestMatchers(HttpMethod.GET,  "/api/v1/bulk/**")             .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
 
+                        // CSV exports — all roles can export their own scoped data
+                        .requestMatchers(HttpMethod.GET,  "/api/v1/export/products")      .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
+                        .requestMatchers(HttpMethod.GET,  "/api/v1/export/movements")     .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
+
                         // Product reads
                         .requestMatchers(HttpMethod.GET,  "/api/v1/products")            .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
                         .requestMatchers(HttpMethod.GET,  "/api/v1/products/**")         .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
