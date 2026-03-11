@@ -17,6 +17,9 @@ import com.warehouse.inventory.security.CustomUserDetails;
 import com.warehouse.inventory.service.BulkOperationService;
 import com.warehouse.inventory.service.ThresholdService;
 import com.warehouse.inventory.service.NotificationService;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +48,35 @@ public class BulkOperationServiceImpl implements BulkOperationService {
     private final ThresholdService           thresholdService;
     private final NotificationService        notificationService;
     private final ObjectMapper               objectMapper;
+    private final MeterRegistry              meterRegistry;
+
+    private Counter jobCompletedCounter;
+    private Counter jobFailedCounter;
+    private Counter rowSuccessCounter;
+    private Counter rowFailedCounter;
+
+    @PostConstruct
+    public void initMetrics() {
+        jobCompletedCounter = Counter.builder("bulk.jobs.total")
+                .description("Total number of bulk CSV jobs processed")
+                .tag("status", "COMPLETED")
+                .register(meterRegistry);
+
+        jobFailedCounter = Counter.builder("bulk.jobs.total")
+                .description("Total number of bulk CSV jobs processed")
+                .tag("status", "FAILED")
+                .register(meterRegistry);
+
+        rowSuccessCounter = Counter.builder("bulk.rows.processed")
+                .description("Total number of individual CSV rows processed")
+                .tag("status", "SUCCESS")
+                .register(meterRegistry);
+
+        rowFailedCounter = Counter.builder("bulk.rows.processed")
+                .description("Total number of individual CSV rows processed")
+                .tag("status", "FAILED")
+                .register(meterRegistry);
+    }
 
     // -------------------------------------------------------------------------
     // POST /bulk/upload
@@ -146,11 +178,13 @@ public class BulkOperationServiceImpl implements BulkOperationService {
 
                 rowResult.put("status", "SUCCESS");
                 successCount++;
+                rowSuccessCounter.increment();
 
             } catch (Exception e) {
                 rowResult.put("status", "FAILED");
                 rowResult.put("reason", e.getMessage());
                 failCount++;
+                rowFailedCounter.increment();
                 logger.warn("Bulk job {} row {}: FAILED — {}", jobId, rowNumber, e.getMessage());
             }
 
@@ -176,7 +210,7 @@ public class BulkOperationServiceImpl implements BulkOperationService {
             stockAfter = stockBefore + quantity;
             product.setStockQuantity(stockAfter);
 
-        } else { // REMOVE
+        } else {
             int available = stockBefore - product.getReservedQuantity();
             if (available < quantity) {
                 throw new IllegalStateException(
@@ -241,6 +275,12 @@ public class BulkOperationServiceImpl implements BulkOperationService {
 
         jobRepository.save(job);
 
+        if (finalStatus == BulkOperationJob.Status.COMPLETED) {
+            jobCompletedCounter.increment();
+        } else {
+            jobFailedCounter.increment();
+        }
+
         logger.info("Bulk job {} {} — {}/{} rows succeeded",
                 jobId, finalStatus, successCount, job.getTotalRows());
     }
@@ -299,9 +339,7 @@ public class BulkOperationServiceImpl implements BulkOperationService {
                 throw new IllegalArgumentException("CSV file is empty");
             }
 
-            // Validate header
-            String[] header = all.get(0);
-            validateHeader(header);
+            validateHeader(all.get(0));
 
             // Return data rows only (skip header)
             return all.subList(1, all.size());

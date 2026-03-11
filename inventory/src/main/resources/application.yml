@@ -65,6 +65,15 @@ management:
   endpoint:
     health:
       show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+info:
+  app:
+    name: Warehouse Inventory System
+    version: 1.0.0
+    description: Inventory and Stock Management REST API
 
 notification:
   max-retries: 3

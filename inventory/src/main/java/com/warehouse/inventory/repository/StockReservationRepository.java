@@ -12,20 +12,21 @@ import java.util.UUID;
 public interface StockReservationRepository extends JpaRepository<StockReservation, UUID> {
 
     List<StockReservation> findByProductIdAndStatus(
-            UUID productId, StockReservation.Status status
-    );
+            UUID productId, StockReservation.Status status);
 
+    List<StockReservation> findByStatusAndExpiresAtBefore(
+            StockReservation.Status status, LocalDateTime now);
+
+    List<StockReservation> findByProductIdAndReservedByIdAndStatus(
+            UUID productId, UUID reservedById, StockReservation.Status status);
+
+    // Added CP7 — used by StockReservationServiceImpl
     List<StockReservation> findByProductId(UUID productId);
 
     List<StockReservation> findByStatus(StockReservation.Status status);
 
     List<StockReservation> findAllByOrderByCreatedAtDesc();
 
-    List<StockReservation> findByStatusAndExpiresAtBefore(
-            StockReservation.Status status, LocalDateTime now
-    );
-
-    List<StockReservation> findByProductIdAndReservedByIdAndStatus(
-            UUID productId, UUID reservedById, StockReservation.Status status
-    );
+    // Added CP10 — used by MetricsConfig Gauge
+    long countByStatus(StockReservation.Status status);
 }

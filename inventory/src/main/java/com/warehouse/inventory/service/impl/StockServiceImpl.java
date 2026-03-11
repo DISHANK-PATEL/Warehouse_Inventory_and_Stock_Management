@@ -17,6 +17,9 @@ import com.warehouse.inventory.security.CustomUserDetails;
 import com.warehouse.inventory.service.NotificationService;
 import com.warehouse.inventory.service.StockService;
 import com.warehouse.inventory.service.ThresholdService;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +36,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import io.micrometer.core.instrument.Timer;
 import java.util.UUID;
 
 @Service
@@ -49,6 +53,42 @@ public class StockServiceImpl implements StockService {
     private final StockReservationRepository reservationRepository;
     private final ThresholdService           thresholdService;
     private final NotificationService        notificationService;
+    private final MeterRegistry              meterRegistry;
+
+    private Counter addSuccessCounter;
+    private Counter addFailCounter;
+    private Counter removeSuccessCounter;
+    private Counter removeFailCounter;
+    private Counter reserveSuccessCounter;
+    private Counter reserveFailCounter;
+    private Counter releaseSuccessCounter;
+    private Counter releaseFailCounter;
+
+    private Timer stockUpdateTimer;
+
+    @PostConstruct
+    public void initMetrics() {
+        addSuccessCounter    = stockCounter("ADD",     "success");
+        addFailCounter       = stockCounter("ADD",     "failure");
+        removeSuccessCounter = stockCounter("REMOVE",  "success");
+        removeFailCounter    = stockCounter("REMOVE",  "failure");
+        reserveSuccessCounter = stockCounter("RESERVE", "success");
+        reserveFailCounter    = stockCounter("RESERVE", "failure");
+        releaseSuccessCounter = stockCounter("RELEASE", "success");
+        releaseFailCounter    = stockCounter("RELEASE", "failure");
+
+        stockUpdateTimer = Timer.builder("stock.updates.duration")
+                .description("Time taken to process a stock update operation")
+                .register(meterRegistry);
+    }
+
+    private Counter stockCounter(String type, String status) {
+        return Counter.builder("stock.updates.total")
+                .description("Total number of stock update operations")
+                .tag("type",   type)
+                .tag("status", status)
+                .register(meterRegistry);
+    }
 
     // -------------------------------------------------------------------------
     // POST /stock/update  (non-transactional wrapper)
@@ -56,7 +96,22 @@ public class StockServiceImpl implements StockService {
 
     @Override
     public StockMovementResponse updateStock(StockUpdateRequest request) {
-        StockUpdateResult result = performStockUpdate(request);
+
+        String type = request.getType() != null ? request.getType().toUpperCase() : "UNKNOWN";
+
+        StockUpdateResult result;
+
+        try {
+            // Time the full transactional operation
+            result = stockUpdateTimer.recordCallable(() -> performStockUpdate(request));
+        } catch (Exception e) {
+            incrementFailCounter(type);
+            // Re-throw as unchecked so existing exception handlers still work
+            if (e instanceof RuntimeException re) throw re;
+            throw new RuntimeException(e);
+        }
+
+        incrementSuccessCounter(type);
 
         // Dispatch async notifications AFTER transaction committed
         if (result.alert() != null) {
@@ -269,6 +324,26 @@ public class StockServiceImpl implements StockService {
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    private void incrementSuccessCounter(String type) {
+        switch (type) {
+            case "ADD"     -> addSuccessCounter.increment();
+            case "REMOVE"  -> removeSuccessCounter.increment();
+            case "RESERVE" -> reserveSuccessCounter.increment();
+            case "RELEASE" -> releaseSuccessCounter.increment();
+            default        -> {}
+        }
+    }
+
+    private void incrementFailCounter(String type) {
+        switch (type) {
+            case "ADD"     -> addFailCounter.increment();
+            case "REMOVE"  -> removeFailCounter.increment();
+            case "RESERVE" -> reserveFailCounter.increment();
+            case "RELEASE" -> releaseFailCounter.increment();
+            default        -> {}
+        }
+    }
 
     private User getCurrentUser() {
         CustomUserDetails userDetails = (CustomUserDetails)

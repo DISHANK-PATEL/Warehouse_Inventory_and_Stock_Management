@@ -6,6 +6,9 @@ import com.warehouse.inventory.repository.ProductRepository;
 import com.warehouse.inventory.repository.StockAlertRepository;
 import com.warehouse.inventory.service.NotificationService;
 import com.warehouse.inventory.service.ThresholdService;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +26,7 @@ public class ThresholdServiceImpl implements ThresholdService {
 
     private final ProductRepository    productRepository;
     private final StockAlertRepository stockAlertRepository;
+    private final MeterRegistry meterRegistry;
 
     // How many alerts of the same breach type can be raised per product
     // within the lookback window before suppression kicks in.
@@ -32,6 +36,22 @@ public class ThresholdServiceImpl implements ThresholdService {
 
     // Lookback window for breach-limit guard (24 hours)
     private static final int BREACH_LOOKBACK_HOURS = 24;
+
+    private Counter belowMinCounter;
+    private Counter aboveMaxCounter;
+
+    @PostConstruct
+    public void initMetrics() {
+        belowMinCounter = Counter.builder("alerts.triggered.total")
+                .description("Number of stock breach alerts triggered")
+                .tag("breachType", "BELOW_MIN")
+                .register(meterRegistry);
+
+        aboveMaxCounter = Counter.builder("alerts.triggered.total")
+                .description("Number of stock breach alerts triggered")
+                .tag("breachType", "ABOVE_MAX")
+                .register(meterRegistry);
+    }
 
     // -------------------------------------------------------------------------
     // Core evaluation — called after every stock change
@@ -81,6 +101,13 @@ public class ThresholdServiceImpl implements ThresholdService {
                 .build();
 
         alert = stockAlertRepository.save(alert);
+
+        if (breachType == StockAlert.BreachType.BELOW_MIN) {
+            belowMinCounter.increment();
+        } else {
+            aboveMaxCounter.increment();
+        }
+
         logger.info("StockAlert created for product '{}': {} (stock={}, threshold={})",
                 product.getName(), breachType, stock, thresholdValue);
 
