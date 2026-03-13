@@ -38,4 +38,13 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, UU
             LocalDateTime startDate,
             LocalDateTime endDate
     );
+
+    // ---- Metrics queries ----
+    long countByMovementTypeAndCreatedAtBetween(
+            StockMovement.MovementType movementType,
+            LocalDateTime from,
+            LocalDateTime to
+    );
+
+    long countByCreatedAtBetween(LocalDateTime from, LocalDateTime to);
 }

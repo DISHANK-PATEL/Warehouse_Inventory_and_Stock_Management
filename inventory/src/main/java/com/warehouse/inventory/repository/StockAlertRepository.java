@@ -18,4 +18,13 @@ public interface StockAlertRepository extends JpaRepository<StockAlert, UUID>,
             StockAlert.BreachType breachType,
             LocalDateTime since
     );
+
+    // ---- Metrics queries ----
+    long countByCreatedAtBetween(LocalDateTime from, LocalDateTime to);
+
+    long countByBreachTypeAndCreatedAtBetween(
+            StockAlert.BreachType breachType,
+            LocalDateTime from,
+            LocalDateTime to
+    );
 }

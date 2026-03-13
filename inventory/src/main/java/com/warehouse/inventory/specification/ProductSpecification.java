@@ -79,4 +79,40 @@ public class ProductSpecification {
             return cb.and(predicates.toArray(new Predicate[0]));
         };
     }
+
+    /**
+     * Returns a Specification that matches products currently in any breach state (BELOW_MIN or ABOVE_MAX).
+     * Optionally filters by a specific breach type and/or product manager.
+     *
+     * Used by GET /api/v1/products/breached.
+     */
+    public static Specification<Product> breachedProducts(
+            Product.BreachStatus breachType,
+            UUID managerId,
+            UUID scopedManagerId
+    ) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            // PM scope
+            if (scopedManagerId != null) {
+                predicates.add(cb.equal(root.get("productManager").get("id"), scopedManagerId));
+            }
+
+            // Admin-supplied managerId filter
+            if (managerId != null && scopedManagerId == null) {
+                predicates.add(cb.equal(root.get("productManager").get("id"), managerId));
+            }
+
+            // Specific breach type requested
+            if (breachType != null) {
+                predicates.add(cb.equal(root.get("breachStatus"), breachType));
+            } else {
+                // No specific type → return anything that is NOT NONE (i.e. any active breach)
+                predicates.add(cb.notEqual(root.get("breachStatus"), Product.BreachStatus.NONE));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
 }

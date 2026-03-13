@@ -29,8 +29,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${MAIL_USERNAME:placeholder@example.com}
-    password: ${MAIL_PASSWORD:placeholder}
+    username: ${MAIL_USERNAME:ankitajha0603@gmail.com}
+    password: ${MAIL_PASSWORD:eunjmshwlzgosbsj}
     test-connection: false
     properties:
       mail:
@@ -38,6 +38,12 @@ spring:
           auth: true
           starttls:
             enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+        transport:
+          protocol: smtp
 
   cache:
     type: caffeine
@@ -82,5 +88,5 @@ notification:
 scheduler:
   retry-interval-ms: 300000
   retry-initial-delay-ms: 60000
-  expiry-interval-ms: 300000
-  expiry-initial-delay-ms: 30000
+  expiry-interval-ms: 30000
+  expiry-initial-delay-ms: 5000

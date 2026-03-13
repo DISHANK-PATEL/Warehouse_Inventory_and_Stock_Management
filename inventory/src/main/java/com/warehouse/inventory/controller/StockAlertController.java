@@ -41,4 +41,12 @@ public class StockAlertController {
             @PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(stockAlertService.getAlertById(id)));
     }
+
+    @PostMapping("/{id}/retrigger")
+    public ResponseEntity<ApiResponse<String>> retriggerNotifications(
+            @PathVariable UUID id) {
+        stockAlertService.retriggerNotifications(id);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Retrigger request processed for alert: " + id));
+    }
 }

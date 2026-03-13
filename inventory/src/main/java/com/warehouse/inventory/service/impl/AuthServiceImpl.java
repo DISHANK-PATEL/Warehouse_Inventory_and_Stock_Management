@@ -71,6 +71,6 @@ public class AuthServiceImpl implements AuthService {
                 .isActive(true)
                 .build();
 
-        return new SignupResponse(userRepository.save(newUser));
+        return new SignupResponse(userRepository.saveAndFlush(newUser));
     }
 }

@@ -29,4 +29,10 @@ public interface StockReservationRepository extends JpaRepository<StockReservati
 
     // Added CP10 — used by MetricsConfig Gauge
     long countByStatus(StockReservation.Status status);
+
+    long countByStatusAndCreatedAtBetween(
+            StockReservation.Status status,
+            LocalDateTime from,
+            LocalDateTime to
+    );
 }

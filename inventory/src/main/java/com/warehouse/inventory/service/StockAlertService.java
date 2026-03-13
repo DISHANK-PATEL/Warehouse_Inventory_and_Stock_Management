@@ -22,6 +22,7 @@ public interface StockAlertService {
             int size
     );
 
-    /** GET /api/v1/alerts/:id — PM scoped */
     StockAlertResponse getAlertById(UUID id);
+
+    void retriggerNotifications(UUID alertId);
 }

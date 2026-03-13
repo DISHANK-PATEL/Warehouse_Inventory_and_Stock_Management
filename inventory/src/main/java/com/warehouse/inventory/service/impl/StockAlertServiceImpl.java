@@ -8,6 +8,7 @@ import com.warehouse.inventory.exception.ForbiddenException;
 import com.warehouse.inventory.exception.ResourceNotFoundException;
 import com.warehouse.inventory.repository.StockAlertRepository;
 import com.warehouse.inventory.security.CustomUserDetails;
+import com.warehouse.inventory.service.NotificationService;
 import com.warehouse.inventory.service.StockAlertService;
 import com.warehouse.inventory.specification.StockAlertSpecification;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ import java.util.UUID;
 public class StockAlertServiceImpl implements StockAlertService {
 
     private final StockAlertRepository stockAlertRepository;
+    private final NotificationService  notificationService;
 
     // -------------------------------------------------------------------------
     // GET /api/v1/alerts
@@ -87,6 +89,20 @@ public class StockAlertServiceImpl implements StockAlertService {
         }
 
         return new StockAlertResponse(alert);
+    }
+
+    // -------------------------------------------------------------------------
+    // POST /api/v1/alerts/:id/retrigger  (Admin only)
+    // -------------------------------------------------------------------------
+
+    @Override
+    public void retriggerNotifications(UUID alertId) {
+        // Verify alert exists (throws 404 if not)
+        stockAlertRepository.findById(alertId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Stock alert not found with id: " + alertId));
+
+        notificationService.retriggerNotificationsForAlert(alertId);
     }
 
     // -------------------------------------------------------------------------

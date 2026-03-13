@@ -71,13 +71,13 @@ public class ProductServiceImpl implements ProductService {
             }
             productManager = currentUser;
         }
-         if (request.getMinThreshold() != null && request.getMaxThreshold() != null) {
-             if (request.getMinThreshold() > request.getMaxThreshold()) {
-                 throw new IllegalArgumentException(
-                         "minThreshold cannot exceed maxThreshold"
-                 );
-             }
-         }
+        if (request.getMinThreshold() != null && request.getMaxThreshold() != null) {
+            if (request.getMinThreshold() > request.getMaxThreshold()) {
+                throw new IllegalArgumentException(
+                        "minThreshold cannot exceed maxThreshold"
+                );
+            }
+        }
 
         Product product = Product.builder()
                 .name(request.getName())
@@ -204,6 +204,51 @@ public class ProductServiceImpl implements ProductService {
         CustomUserDetails userDetails = (CustomUserDetails)
                 SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return userDetails.getUser();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PagedResponse<ProductResponse> getBreachedProducts(
+            String breachType,
+            UUID managerId,
+            int page,
+            int size,
+            String sortBy,
+            String sortDir
+    ) {
+        User currentUser = getCurrentUser();
+
+        UUID scopedManagerId = (currentUser.getRole() == User.Role.PRODUCT_MANAGER)
+                ? currentUser.getId()
+                : null;
+
+        // Parse optional specific breach type — null means "any breach"
+        Product.BreachStatus breachStatus = null;
+        if (breachType != null && !breachType.isBlank()) {
+            try {
+                breachStatus = Product.BreachStatus.valueOf(breachType.toUpperCase());
+                if (breachStatus == Product.BreachStatus.NONE) {
+                    // Asking for NONE on the /breached endpoint makes no sense
+                    throw new IllegalArgumentException(
+                            "breachType 'NONE' is not valid for the /breached endpoint. " +
+                                    "Use BELOW_MIN or ABOVE_MAX, or omit the parameter to get all breaches.");
+                }
+            } catch (IllegalArgumentException e) {
+                if (e.getMessage().startsWith("breachType")) throw e;
+                throw new IllegalArgumentException(
+                        "Invalid breachType '" + breachType + "'. Use BELOW_MIN or ABOVE_MAX.");
+            }
+        }
+
+        int clampedSize = Math.min(size, 100);
+        Sort sort = buildSort(sortBy, sortDir);
+        Pageable pageable = PageRequest.of(page, clampedSize, sort);
+
+        Page<ProductResponse> resultPage = productRepository
+                .findAll(ProductSpecification.breachedProducts(breachStatus, managerId, scopedManagerId), pageable)
+                .map(ProductResponse::new);
+
+        return new PagedResponse<>(resultPage);
     }
 
     private Product.BreachStatus parseBreachStatus(String breachType) {

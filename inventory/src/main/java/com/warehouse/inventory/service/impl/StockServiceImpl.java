@@ -236,19 +236,24 @@ public class StockServiceImpl implements StockService {
                     }
                 }
 
-                // Restore the reserved quantity
-                int restored = product.getReservedQuantity() - reservation.getQuantity();
+                int releaseQty = Math.min(request.getQuantity(), reservation.getQuantity());
+
+                int restored = product.getReservedQuantity() - releaseQty;
                 product.setReservedQuantity(Math.max(0, restored));
                 stockAfter = stockBefore; // physical stock unchanged
                 productRepository.save(product);
 
-                // Mark reservation as released
-                reservation.setStatus(StockReservation.Status.RELEASED);
-                reservation.setReleasedAt(LocalDateTime.now());
+                if (releaseQty >= reservation.getQuantity()) {
+                    reservation.setStatus(StockReservation.Status.RELEASED);
+                    reservation.setReleasedAt(LocalDateTime.now());
+                    logger.info("Fully released reservation {} — {} units of '{}' restored",
+                            reservation.getId(), releaseQty, product.getName());
+                } else {
+                    reservation.setQuantity(reservation.getQuantity() - releaseQty);
+                    logger.info("Partially released reservation {} — {} units restored, {} still reserved",
+                            reservation.getId(), releaseQty, reservation.getQuantity());
+                }
                 reservationRepository.save(reservation);
-
-                logger.info("Released reservation {} — {} units of '{}' restored",
-                        reservation.getId(), reservation.getQuantity(), product.getName());
             }
 
             default -> throw new IllegalArgumentException(
@@ -269,8 +274,11 @@ public class StockServiceImpl implements StockService {
                 .notes(request.getNotes())
                 .build();
 
+        StockMovement saved = stockMovementRepository.save(movement);
+        int reserved  = product.getReservedQuantity();
+        int available = product.getStockQuantity() - reserved;
         StockMovementResponse response =
-                new StockMovementResponse(stockMovementRepository.save(movement));
+                new StockMovementResponse(saved, reserved, available, alert);
 
         return new StockUpdateResult(response, alert);
     }

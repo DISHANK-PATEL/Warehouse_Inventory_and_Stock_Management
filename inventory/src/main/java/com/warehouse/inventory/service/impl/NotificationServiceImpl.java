@@ -3,7 +3,9 @@ package com.warehouse.inventory.service.impl;
 import com.warehouse.inventory.entity.NotificationLog;
 import com.warehouse.inventory.entity.StockAlert;
 import com.warehouse.inventory.entity.User;
+import com.warehouse.inventory.exception.ResourceNotFoundException;
 import com.warehouse.inventory.repository.NotificationLogRepository;
+import com.warehouse.inventory.repository.StockAlertRepository;
 import com.warehouse.inventory.repository.UserRepository;
 import com.warehouse.inventory.service.NotificationService;
 import jakarta.mail.MessagingException;
@@ -11,7 +13,6 @@ import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -21,11 +22,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 import org.thymeleaf.context.Context;
-import java.time.format.DateTimeFormatter;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +36,8 @@ public class NotificationServiceImpl implements NotificationService {
     private static final Logger logger = LoggerFactory.getLogger(NotificationServiceImpl.class);
 
     private final JavaMailSender mailSender;
+    private final StockAlertRepository stockAlertRepository;
+
 
     private final NotificationLogRepository notificationLogRepository;
     private final UserRepository            userRepository;
@@ -41,6 +45,9 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Value("${notification.max-retries:3}")
     private int maxRetries;
+
+    @Value("${spring.mail.username}")
+    private String fromEmail;
 
     // -------------------------------------------------------------------------
     // Send breach notifications to PM + all Admins
@@ -50,17 +57,70 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public void sendBreachNotifications(StockAlert alert) {
-        logger.info("Dispatching breach notifications for alert {} (product: {}",
-                alert.getId(), alert.getProduct().getName());
-        List<User> recipients = resolveRecipients(alert);
+        // Re-fetch with a fresh session so all lazy associations are available
+        // The passed-in alert may be detached (original transaction already closed)
+        StockAlert freshAlert = stockAlertRepository.findById(alert.getId())
+                .orElse(null);
+
+        if (freshAlert == null) {
+            logger.warn("Alert {} no longer exists, skipping notifications", alert.getId());
+            return;
+        }
+
+        logger.info("Dispatching breach notifications for alert {} (product: {})",
+                freshAlert.getId(), freshAlert.getProduct().getName());
+
+        List<User> recipients = resolveRecipients(freshAlert);
+
+        if (recipients.isEmpty()) {
+            logger.warn("No recipients found for alert {} — no PM assigned and no admins?",
+                    freshAlert.getId());
+            return;
+        }
+
         for (User recipient : recipients) {
             NotificationLog entry = NotificationLog.builder()
-                    .alert(alert)
+                    .alert(freshAlert)
                     .receiver(recipient)
                     .status(NotificationLog.Status.PENDING)
                     .build();
             entry = notificationLogRepository.save(entry);
-            attemptSend(entry, alert, recipient);
+            attemptSend(entry, freshAlert, recipient);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Admin-triggered manual retrigger for a specific alert
+    // -------------------------------------------------------------------------
+
+    @Override
+    @Transactional
+    public void retriggerNotificationsForAlert(UUID alertId) {
+        StockAlert freshAlert = stockAlertRepository.findById(alertId)
+                .orElseThrow(() -> new com.warehouse.inventory.exception.ResourceNotFoundException(
+                        "Stock alert not found with id: " + alertId));
+
+        List<NotificationLog> failedLogs = notificationLogRepository.findByAlertId(alertId)
+                .stream()
+                .filter(log -> log.getStatus() == NotificationLog.Status.FAILED)
+                .toList();
+
+        if (failedLogs.isEmpty()) {
+            logger.info("No failed notifications found for alert {} — nothing to retrigger", alertId);
+            return;
+        }
+
+        logger.info("Admin retrigger: resetting {} failed notification(s) for alert {}",
+                failedLogs.size(), alertId);
+
+        for (NotificationLog entry : failedLogs) {
+            // Reset retry window so scheduler / direct attempt picks it up immediately
+            entry.setNextRetryAt(LocalDateTime.now());
+            entry.setStatus(NotificationLog.Status.FAILED); // keep FAILED until actually delivered
+            notificationLogRepository.save(entry);
+
+            // Attempt send immediately (runs in the caller's thread — Admin request)
+            attemptSend(entry, freshAlert, entry.getReceiver());
         }
     }
 
@@ -103,11 +163,8 @@ public class NotificationServiceImpl implements NotificationService {
             recipients.add(pm);
         }
 
-        List<User> admins = userRepository.findAllByRole(User.Role.ADMIN);
-        for (User admin : admins) {
-            if (pm == null || !admin.getId().equals(pm.getId())) {
-                recipients.add(admin);
-            }
+        if (recipients.isEmpty()) {
+            recipients.addAll(userRepository.findAllByRole(User.Role.ADMIN));
         }
 
         return recipients;
@@ -118,6 +175,7 @@ public class NotificationServiceImpl implements NotificationService {
 
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+            helper.setFrom(fromEmail);
             helper.setTo(recipient.getEmail());
             helper.setSubject(buildSubject(alert));
             helper.setText(buildHtmlBody(alert, recipient), true);

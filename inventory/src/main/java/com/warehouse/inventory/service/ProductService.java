@@ -38,4 +38,20 @@ public interface ProductService {
     ProductResponse getProductById(UUID id);
 
     ProductResponse updateProduct(UUID id, UpdateProductRequest request);
+
+    /**
+     * GET /products/breached — convenience breach monitoring endpoint.
+     * Returns products with breachStatus != NONE.
+     *
+     * @param breachType BELOW_MIN | ABOVE_MAX | null (any breach)
+     * @param managerId  filter by PM (Admin/Staff only; PM sees own products)
+     */
+    PagedResponse<ProductResponse> getBreachedProducts(
+            String breachType,
+            UUID managerId,
+            int page,
+            int size,
+            String sortBy,
+            String sortDir
+    );
 }

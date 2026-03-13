@@ -4,6 +4,7 @@ import com.warehouse.inventory.dto.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -83,5 +84,36 @@ public class GlobalExceptionHandler {
         log.error("Unexpected error: ", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.failure("SERVER_ERROR", "An unexpected error occurred"));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNotReadable(HttpMessageNotReadableException ex) {
+        String message = "Invalid request body";
+
+        Throwable cause = ex.getCause();
+        if (cause instanceof com.fasterxml.jackson.databind.exc.InvalidFormatException ife) {
+            String fieldName = ife.getPath().isEmpty() ? "field"
+                    : ife.getPath().get(ife.getPath().size() - 1).getFieldName();
+
+            if (ife.getTargetType() != null && ife.getTargetType().isEnum()) {
+                // Enum value error — list valid options
+                String valid = java.util.Arrays.stream(ife.getTargetType().getEnumConstants())
+                        .map(Object::toString)
+                        .collect(java.util.stream.Collectors.joining(", "));
+                message = "Invalid value '" + ife.getValue() + "' for field '" + fieldName
+                        + "'. Accepted values are: " + valid;
+            } else if (ife.getTargetType() != null
+                    && ife.getTargetType().getSimpleName().equals("UUID")) {
+                // UUID parse error
+                message = "Invalid UUID format for field '" + fieldName
+                        + "': '" + ife.getValue() + "' is not a valid UUID";
+            } else if (ife.getTargetType() != null) {
+                message = "Invalid value for field '" + fieldName
+                        + "': expected " + ife.getTargetType().getSimpleName();
+            }
+        }
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.failure("INVALID_VALUE", message));
     }
 }

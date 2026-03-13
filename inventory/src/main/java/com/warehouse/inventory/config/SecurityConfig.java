@@ -1,11 +1,14 @@
 package com.warehouse.inventory.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.warehouse.inventory.dto.response.ApiResponse;
 import com.warehouse.inventory.security.CustomUserDetailsService;
 import com.warehouse.inventory.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -16,7 +19,9 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
@@ -24,8 +29,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthFilter;
+    private final JwtAuthenticationFilter  jwtAuthFilter;
     private final CustomUserDetailsService userDetailsService;
+    private final ObjectMapper             objectMapper;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -62,6 +68,7 @@ public class SecurityConfig {
 
                         // Product reads
                         .requestMatchers(HttpMethod.GET,  "/api/v1/products")            .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
+                        .requestMatchers(HttpMethod.GET,  "/api/v1/products/breached")   .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
                         .requestMatchers(HttpMethod.GET,  "/api/v1/products/**")         .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
 
                         // Stock operations
@@ -73,8 +80,16 @@ public class SecurityConfig {
                         // Alerts
                         .requestMatchers(HttpMethod.GET,  "/api/v1/alerts")              .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
                         .requestMatchers(HttpMethod.GET,  "/api/v1/alerts/**")           .hasAnyRole("ADMIN", "STAFF", "PRODUCT_MANAGER")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/alerts/*/retrigger")  .hasRole("ADMIN")
+
+                        // Metrics (Admin only)
+                        .requestMatchers(HttpMethod.GET,  "/api/v1/metrics")             .hasRole("ADMIN")
 
                         .anyRequest().authenticated()
+                )
+                .exceptionHandling(ex -> ex
+                        .accessDeniedHandler(accessDeniedHandler(objectMapper))
+                        .authenticationEntryPoint(authenticationEntryPoint(objectMapper))
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -99,5 +114,28 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AccessDeniedHandler accessDeniedHandler(ObjectMapper objectMapper) {
+        return (request, response, ex) -> {
+            response.setStatus(HttpStatus.FORBIDDEN.value());
+            response.setContentType("application/json");
+            response.getWriter().write(objectMapper.writeValueAsString(
+                    ApiResponse.failure("FORBIDDEN",
+                            "You don't have permission to perform this action")
+            ));
+        };
+    }
+
+    @Bean
+    public AuthenticationEntryPoint authenticationEntryPoint(ObjectMapper objectMapper) {
+        return (request, response, ex) -> {
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            response.setContentType("application/json");
+            response.getWriter().write(objectMapper.writeValueAsString(
+                    ApiResponse.failure("UNAUTHORIZED", "Authentication required. Please log in.")
+            ));
+        };
     }
 }
