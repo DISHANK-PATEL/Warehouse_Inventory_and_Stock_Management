@@ -127,7 +127,7 @@ public class StockServiceImpl implements StockService {
     }
 
     @Transactional
-    protected StockUpdateResult performStockUpdate(StockUpdateRequest request) {
+    public StockUpdateResult performStockUpdate(StockUpdateRequest request) {
 
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException(

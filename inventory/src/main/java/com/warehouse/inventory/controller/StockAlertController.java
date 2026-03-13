@@ -5,6 +5,7 @@ import com.warehouse.inventory.dto.response.PagedResponse;
 import com.warehouse.inventory.dto.response.StockAlertResponse;
 import com.warehouse.inventory.entity.StockAlert;
 import com.warehouse.inventory.service.StockAlertService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.UUID;
 
+@Tag(name = "Stock Alerts")
 @RestController
 @RequestMapping("/api/v1/alerts")
 @RequiredArgsConstructor

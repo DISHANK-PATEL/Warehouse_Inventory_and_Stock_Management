@@ -3,6 +3,7 @@ package com.warehouse.inventory.controller;
 import com.warehouse.inventory.dto.response.ApiResponse;
 import com.warehouse.inventory.dto.response.BulkJobResponse;
 import com.warehouse.inventory.service.BulkOperationService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -13,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.UUID;
 
+@Tag(name = "Bulk Operations")
 @RestController
 @RequestMapping("/api/v1/bulk")
 @RequiredArgsConstructor

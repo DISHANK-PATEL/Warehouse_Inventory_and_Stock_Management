@@ -26,35 +26,6 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("Warehouse Inventory & Stock Management API")
                         .version("1.0.0")
-                        .description("""
-                                ## Overview
-                                A production-ready REST API for managing warehouse inventory, \
-                                stock movements, reservations, threshold breach alerting, \
-                                and async email notifications.
-
-                                ## Authentication
-                                All endpoints (except `/api/v1/auth/login` and `/api/v1/health`) \
-                                require a **Bearer JWT token**.
-
-                                1. Call `POST /api/v1/auth/login` with your credentials.
-                                2. Copy the `token` from the response.
-                                3. Click **Authorize** (🔒) at the top of this page.
-                                4. Enter `Bearer <your_token>` and click **Authorize**.
-
-                                ## Roles
-                                | Role | Key Permissions |
-                                |------|----------------|
-                                | **ADMIN** | Full access including user creation, bulk upload, metrics, retrigger |
-                                | **STAFF** | Stock operations, view products/alerts/history, CSV export |
-                                | **PRODUCT_MANAGER** | Create products, manage own products, stock operations on own products |
-
-                                ## Seed Credentials
-                                | Role | Email | Password |
-                                |------|-------|----------|
-                                | ADMIN | admin@warehouse.com | admin123 |
-                                | STAFF | staff@warehouse.com | password |
-                                | PRODUCT_MANAGER | pm@warehouse.com | productmanager123 |
-                                """)
                         .contact(new Contact()
                                 .name("Warehouse Dev Team")
                                 .email("admin@warehouse.com"))

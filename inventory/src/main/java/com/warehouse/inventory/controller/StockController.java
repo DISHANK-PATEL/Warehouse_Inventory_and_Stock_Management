@@ -6,6 +6,7 @@ import com.warehouse.inventory.dto.response.PagedResponse;
 import com.warehouse.inventory.dto.response.StockMovementResponse;
 import com.warehouse.inventory.entity.StockMovement;
 import com.warehouse.inventory.service.StockService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.UUID;
 
+@Tag(name = "Stock")
 @RestController
 @RequestMapping("/api/v1/stock")
 @RequiredArgsConstructor

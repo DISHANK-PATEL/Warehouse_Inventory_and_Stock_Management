@@ -2,6 +2,7 @@ package com.warehouse.inventory.controller;
 
 import com.warehouse.inventory.entity.StockMovement;
 import com.warehouse.inventory.service.ExportService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -11,6 +12,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Tag(name = "Export")
 @RestController
 @RequestMapping("/api/v1/export")
 @RequiredArgsConstructor

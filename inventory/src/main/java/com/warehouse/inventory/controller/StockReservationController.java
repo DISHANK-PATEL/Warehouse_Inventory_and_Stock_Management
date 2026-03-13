@@ -3,6 +3,7 @@ package com.warehouse.inventory.controller;
 import com.warehouse.inventory.dto.response.ApiResponse;
 import com.warehouse.inventory.dto.response.StockReservationResponse;
 import com.warehouse.inventory.service.StockReservationService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+@Tag(name = "Stock Reservations")
 @RestController
 @RequestMapping("/api/v1/stock/reservations")
 @RequiredArgsConstructor

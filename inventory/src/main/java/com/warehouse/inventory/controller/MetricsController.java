@@ -3,6 +3,7 @@ package com.warehouse.inventory.controller;
 import com.warehouse.inventory.dto.response.ApiResponse;
 import com.warehouse.inventory.dto.response.MetricsResponse;
 import com.warehouse.inventory.service.MetricsService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,6 +27,7 @@ import java.time.LocalDateTime;
  *
  * If neither is supplied the default window is the past 24 hours.
  */
+@Tag(name = "Metrics")
 @RestController
 @RequestMapping("/api/v1/metrics")
 @RequiredArgsConstructor

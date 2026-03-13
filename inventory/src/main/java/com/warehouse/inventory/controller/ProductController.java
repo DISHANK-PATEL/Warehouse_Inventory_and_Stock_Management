@@ -6,6 +6,7 @@ import com.warehouse.inventory.dto.response.ApiResponse;
 import com.warehouse.inventory.dto.response.PagedResponse;
 import com.warehouse.inventory.dto.response.ProductResponse;
 import com.warehouse.inventory.service.ProductService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
+@Tag(name = "Products")
 @RestController
 @RequestMapping("/api/v1/products")
 @RequiredArgsConstructor
