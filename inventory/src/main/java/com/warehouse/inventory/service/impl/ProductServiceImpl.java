@@ -15,6 +15,7 @@ import com.warehouse.inventory.security.CustomUserDetails;
 import com.warehouse.inventory.service.ProductService;
 import com.warehouse.inventory.specification.ProductSpecification;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -37,6 +38,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "products", allEntries = true)
     public ProductResponse createProduct(CreateProductRequest request) {
 
         if (productRepository.existsByName(request.getName())) {
@@ -133,6 +135,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
+    @CacheEvict(value = "products", key = "#id")
     public ProductResponse getProductById(UUID id) {
 
         Product product = productRepository.findById(id)
@@ -155,6 +158,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "products", key = "#id")
     public ProductResponse updateProduct(UUID id, UpdateProductRequest request) {
 
         Product product = productRepository.findById(id)

@@ -127,7 +127,7 @@ public class StockServiceImpl implements StockService {
     }
 
     @Transactional
-    public StockUpdateResult performStockUpdate(StockUpdateRequest request) {
+    protected StockUpdateResult performStockUpdate(StockUpdateRequest request) {
 
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -168,6 +168,19 @@ public class StockServiceImpl implements StockService {
                                     + ", Requested: " + request.getQuantity());
                 }
                 stockAfter = stockBefore - request.getQuantity();
+
+                // Block REMOVE if the resulting stock would still be in breach
+                // AND the breach notification limit has already been reached.
+                // The PM must resolve the breach before further removals are allowed.
+                if (product.getMinThreshold() != null && stockAfter < product.getMinThreshold()) {
+                    if (thresholdService.isBreachLimitReached(product, StockAlert.BreachType.BELOW_MIN)) {
+                        throw new InsufficientStockException(
+                                "Stock removal blocked: product '" + product.getName()
+                                        + "' is in BELOW_MIN breach and the notification limit has been reached. "
+                                        + "Please resolve the breach before removing more stock.");
+                    }
+                }
+
                 product.setStockQuantity(stockAfter);
                 productRepository.save(product);
                 alert = thresholdService.evaluateAndAlert(product);

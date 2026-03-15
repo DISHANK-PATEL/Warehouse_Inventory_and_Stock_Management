@@ -37,6 +37,12 @@ public class MetricsServiceImpl implements MetricsService {
                 StockMovement.MovementType.RELEASE, from, to);
         long totalOps     = additions + removals + reservations + releases;
 
+        // Compute ops/minute — window duration in minutes
+        long windowMinutes = java.time.Duration.between(from, to).toMinutes();
+        double opsPerMinute = (windowMinutes > 0)
+                ? Math.round((totalOps / (double) windowMinutes) * 100.0) / 100.0
+                : 0.0;
+
         // ── Breach counts ─────────────────────────────────────────────────
         long belowMin = stockAlertRepository.countByBreachTypeAndCreatedAtBetween(
                 StockAlert.BreachType.BELOW_MIN, from, to);
@@ -53,6 +59,7 @@ public class MetricsServiceImpl implements MetricsService {
                 .from(from)
                 .to(to)
                 .totalStockOperations(totalOps)
+                .stockOperationsPerMinute(opsPerMinute)
                 .totalStockAdditions(additions)
                 .totalStockRemovals(removals)
                 .totalStockReservations(reservations)

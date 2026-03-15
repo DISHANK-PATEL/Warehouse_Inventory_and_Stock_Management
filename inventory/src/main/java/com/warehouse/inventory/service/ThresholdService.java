@@ -16,4 +16,6 @@ public interface ThresholdService {
      * The product must already be saved before calling this.
      */
     StockAlert evaluateAndAlert(Product product);
+
+    boolean isBreachLimitReached(Product product, StockAlert.BreachType breachType);
 }

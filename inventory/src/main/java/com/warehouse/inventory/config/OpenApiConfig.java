@@ -25,7 +25,7 @@ public class OpenApiConfig {
                 // ── Info ─────────────────────────────────────────────────
                 .info(new Info()
                         .title("Warehouse Inventory & Stock Management API")
-                        .version("1.0.0")
+                        .version("2.0.0")
                         .contact(new Contact()
                                 .name("Warehouse Dev Team")
                                 .email("admin@warehouse.com"))

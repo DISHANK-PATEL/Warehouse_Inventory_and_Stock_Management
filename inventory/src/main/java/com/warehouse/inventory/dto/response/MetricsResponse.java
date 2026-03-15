@@ -29,6 +29,9 @@ public class MetricsResponse {
     /** Total stock movements (ADD + REMOVE + RESERVE + RELEASE) in window. */
     private long totalStockOperations;
 
+    /** Average stock operations per minute over the window. */
+    private double stockOperationsPerMinute;
+
     /** ADD movements in window. */
     private long totalStockAdditions;
 

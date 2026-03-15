@@ -114,6 +114,18 @@ public class ThresholdServiceImpl implements ThresholdService {
         return alert;
     }
 
+    /**
+     * Public — used by StockService to block REMOVE when breach limit reached.
+     */
+    @Override
+    public boolean isBreachLimitReached(Product product, StockAlert.BreachType breachType) {
+        LocalDateTime since = LocalDateTime.now().minusHours(BREACH_LOOKBACK_HOURS);
+        long recentCount = stockAlertRepository.countByProductIdAndBreachTypeAndCreatedAtAfter(
+                product.getId(), breachType, since
+        );
+        return recentCount >= breachLimit;
+    }
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
@@ -138,11 +150,4 @@ public class ThresholdServiceImpl implements ThresholdService {
      * has already reached or exceeded the configured breach-limit.
      * "Recent" is defined as within the last BREACH_LOOKBACK_HOURS hours.
      */
-    private boolean isBreachLimitReached(Product product, StockAlert.BreachType breachType) {
-        LocalDateTime since = LocalDateTime.now().minusHours(BREACH_LOOKBACK_HOURS);
-        long recentCount = stockAlertRepository.countByProductIdAndBreachTypeAndCreatedAtAfter(
-                product.getId(), breachType, since
-        );
-        return recentCount >= breachLimit;
-    }
 }

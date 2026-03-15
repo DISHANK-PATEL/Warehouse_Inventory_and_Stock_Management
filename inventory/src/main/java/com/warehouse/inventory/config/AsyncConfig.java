@@ -1,5 +1,6 @@
 package com.warehouse.inventory.config;
 
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
@@ -11,6 +12,7 @@ import java.util.concurrent.Executor;
 @Configuration
 @EnableAsync
 @EnableScheduling
+@EnableCaching
 public class AsyncConfig {
 
     @Bean(name = "notificationExecutor")
