@@ -13,20 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 
-/**
- * GET /api/v1/metrics
- *
- * Admin-only endpoint for business-level operational metrics.
- * Supports any time window via ?hours=N (convenience shorthand) or full ?from= &amp; ?to= params.
- *
- * Examples:
- *   /api/v1/metrics?hours=1        → last 1 hour
- *   /api/v1/metrics?hours=24       → last 24 hours
- *   /api/v1/metrics?hours=72       → last 3 days
- *   /api/v1/metrics?from=2024-01-01T00:00:00&amp;to=2024-01-31T23:59:59  → custom range
- *
- * If neither is supplied the default window is the past 24 hours.
- */
+
 @Tag(name = "Metrics")
 @RestController
 @RequestMapping("/api/v1/metrics")

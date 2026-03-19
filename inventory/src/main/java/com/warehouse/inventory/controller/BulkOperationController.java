@@ -22,44 +22,35 @@ public class BulkOperationController {
 
     private final BulkOperationService bulkOperationService;
 
-    /**
-     * POST /api/v1/bulk/upload
-     *
-     * Upload a CSV file with stock operations.
-     * Expected CSV format:
-     *   sku,type,quantity,notes
-     *   TW-001,ADD,50,Restock
-     *   TW-002,REMOVE,10,Sold
-     *
-     * Returns immediately with a jobId — poll GET /bulk/{jobId} for results.
-     * Role: ADMIN only
-     */
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<BulkJobResponse>> uploadCsv(
             @RequestParam("file") MultipartFile file) {
-        return ResponseEntity
-                .status(HttpStatus.ACCEPTED)   // 202 — processing started
-                .body(ApiResponse.success(bulkOperationService.submitJob(file)));
+
+        if (file.isEmpty())
+            throw new IllegalArgumentException("File is empty");
+
+        if (file.getOriginalFilename() == null ||
+                !file.getOriginalFilename().toLowerCase().endsWith(".csv"))
+            throw new IllegalArgumentException("Only CSV files are supported");
+
+        try {
+            byte[] fileBytes = file.getBytes();
+            BulkJobResponse response = bulkOperationService.submitJob(fileBytes, file.getOriginalFilename());
+            return ResponseEntity.status(HttpStatus.ACCEPTED)
+                    .body(ApiResponse.success(response));
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to read file: " + e.getMessage());
+        }
     }
 
-    /**
-     * GET /api/v1/bulk/{jobId}
-     *
-     * Poll job status and per-row results.
-     * Admin sees any job; Staff/PM see only their own.
-     */
     @GetMapping("/{jobId}")
     public ResponseEntity<ApiResponse<BulkJobResponse>> getJob(
             @PathVariable UUID jobId) {
         return ResponseEntity.ok(ApiResponse.success(bulkOperationService.getJob(jobId)));
     }
 
-    /**
-     * GET /api/v1/bulk
-     *
-     * List all bulk jobs.
-     * Admin sees all; Staff/PM see only their own.
-     */
     @GetMapping
     public ResponseEntity<ApiResponse<List<BulkJobResponse>>> getAllJobs() {
         return ResponseEntity.ok(ApiResponse.success(bulkOperationService.getAllJobs()));

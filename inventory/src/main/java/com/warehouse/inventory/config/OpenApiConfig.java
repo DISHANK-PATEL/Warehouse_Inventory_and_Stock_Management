@@ -70,26 +70,27 @@ public class OpenApiConfig {
                                 .description("ADD, REMOVE, RESERVE, RELEASE stock. "
                                         + "Every operation is recorded in the movement history."),
 
-                        new Tag().name("Stock Reservations")
-                                .description("View active reservations. "
-                                        + "Expired reservations are auto-released by the scheduler."),
+                        new Tag().name("Metrics")
+                                .description("Admin-only business metrics over a configurable time window. "
+                                        + "Use ?hours=N or ?from=&to= query params."),
+
+                        new Tag().name("Health")
+                                .description("Application and database health check."),
+
+                        new Tag().name("Bulk Operations")
+                                .description("Admin CSV bulk product upload with async job tracking."),
 
                         new Tag().name("Stock Alerts")
                                 .description("Threshold breach alerts (BELOW_MIN / ABOVE_MAX). "
                                         + "Admins can retrigger failed email notifications."),
 
-                        new Tag().name("Metrics")
-                                .description("Admin-only business metrics over a configurable time window. "
-                                        + "Use ?hours=N or ?from=&to= query params."),
+                        new Tag().name("Stock Reservations")
+                                .description("View active reservations. "
+                                        + "Expired reservations are auto-released by the scheduler."),
 
-                        new Tag().name("Bulk Operations")
-                                .description("Admin CSV bulk product upload with async job tracking."),
 
                         new Tag().name("Export")
-                                .description("Download products and stock movements as CSV files."),
-
-                        new Tag().name("Health")
-                                .description("Application and database health check.")
-                ));
+                                .description("Download products and stock movements as CSV files.")
+                        ));
     }
 }

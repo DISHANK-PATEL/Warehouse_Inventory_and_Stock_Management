@@ -67,32 +67,4 @@ public class ProductController {
             @Valid @RequestBody UpdateProductRequest request) {
         return ResponseEntity.ok(ApiResponse.success(productService.updateProduct(id, request)));
     }
-
-    /**
-     * GET /api/v1/products/breached
-     *
-     * Convenience endpoint that returns all products currently in a breach state.
-     * Supports optional filters:
-     *   ?breachType=BELOW_MIN | ABOVE_MAX
-     *   ?managerId=<uuid>      (Admin/Staff only; PM sees only their own)
-     *
-     * Equivalent to GET /api/v1/products?breachType=BELOW_MIN (or ABOVE_MAX)
-     * but provides a dedicated, self-describing URL for breach monitoring dashboards.
-     */
-    @GetMapping("/breached")
-    public ResponseEntity<ApiResponse<PagedResponse<ProductResponse>>> getBreachedProducts(
-            @RequestParam(required = false)               String  breachType,
-            @RequestParam(required = false)               UUID    managerId,
-            @RequestParam(defaultValue = "0")             int     page,
-            @RequestParam(defaultValue = "20")            int     size,
-            @RequestParam(defaultValue = "createdAt")     String  sortBy,
-            @RequestParam(defaultValue = "desc")          String  sortDir
-    ) {
-        // If caller didn't specify a breach type, default to "any active breach" by
-        // passing null — ProductSpecification will then filter out NONE status implicitly.
-        // We handle this by passing a sentinel "ACTIVE" that the service resolves.
-        return ResponseEntity.ok(ApiResponse.success(
-                productService.getBreachedProducts(breachType, managerId, page, size, sortBy, sortDir)
-        ));
-    }
 }
